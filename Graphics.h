@@ -1,28 +1,49 @@
 #pragma once
 
 #include <Windows.h>
-#include <d3d11_1.h>
+#include <d3d12.h>
+#include <dxgi1_2.h>
 #include <string>
 #include <wrl/client.h>
 
-#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
 namespace Graphics
 {
+	// --- CONSTANTS ---
+	const unsigned int NumBackBuffers = 2;
+	
 	// --- GLOBAL VARS ---
 
-	// Primary D3D11 API objects
-	inline Microsoft::WRL::ComPtr<ID3D11Device1> Device;
-	inline Microsoft::WRL::ComPtr<ID3D11DeviceContext1> Context;
+	// Primary D3D12 API objects
+	inline Microsoft::WRL::ComPtr<ID3D12Device> Device;
 	inline Microsoft::WRL::ComPtr<IDXGISwapChain> SwapChain;
 
-	// Rendering buffers
-	inline Microsoft::WRL::ComPtr<ID3D11RenderTargetView> BackBufferRTV;
-	inline Microsoft::WRL::ComPtr<ID3D11DepthStencilView> DepthBufferDSV;
+	// Command Submission
+	
+	inline Microsoft::WRL::ComPtr<ID3D12CommandAllocator> CommandAllocator; // Submits queues
+	inline Microsoft::WRL::ComPtr<ID3D12CommandQueue> CommandQueue; // Queue of command lists
+	inline Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> CommandList; // Series of commands to draw
+	
+	// Rendering buffers & descriptors
 
+	inline Microsoft::WRL::ComPtr<ID3D12Resource> BackBuffers[NumBackBuffers];
+	inline Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> RTVHeap;
+	inline D3D12_GPU_DESCRIPTOR_HANDLE RTVHandles[NumBackBuffers]{};
+
+	inline Microsoft::WRL::ComPtr<ID3D12Resource> DepthBuffer;
+	inline Microsoft::WRL::ComPtr<ID3D12Resource> DSVHeap;
+	inline D3D12_GPU_DESCRIPTOR_HANDLE DSVHandle{};
+
+	// CPU/GPU synchronization
+	
+	inline Microsoft::WRL::ComPtr<ID3D12Fence>  WaitFence;
+	inline HANDLE								WaitFenceEvent = 0;
+	inline UINT64								WaitFenceCounter = 0;
+	
 	// Debug Layer
-	inline Microsoft::WRL::ComPtr<ID3D11InfoQueue> InfoQueue;
+	inline Microsoft::WRL::ComPtr<ID3D12InfoQueue> InfoQueue;
 
 	// --- FUNCTIONS ---
 
@@ -34,6 +55,10 @@ namespace Graphics
 	HRESULT Initialize(unsigned int windowWidth, unsigned int windowHeight, HWND windowHandle, bool vsyncIfPossible);
 	void ShutDown();
 	void ResizeBuffers(unsigned int width, unsigned int height);
+	void AdvanceSwapChainIndex();
+
+	// Resouce Creation
+	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStatucBuffer(size_t dataStrict);
 
 	// Debug Layer
 	void PrintDebugMessages();
