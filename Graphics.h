@@ -2,7 +2,7 @@
 
 #include <Windows.h>
 #include <d3d12.h>
-#include <dxgi1_2.h>
+#include <dxgi1_6.h>
 #include <string>
 #include <wrl/client.h>
 
@@ -30,11 +30,11 @@ namespace Graphics
 
 	inline Microsoft::WRL::ComPtr<ID3D12Resource> BackBuffers[NumBackBuffers];
 	inline Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> RTVHeap;
-	inline D3D12_GPU_DESCRIPTOR_HANDLE RTVHandles[NumBackBuffers]{};
+	inline D3D12_CPU_DESCRIPTOR_HANDLE RTVHandles[NumBackBuffers]{};
 
 	inline Microsoft::WRL::ComPtr<ID3D12Resource> DepthBuffer;
-	inline Microsoft::WRL::ComPtr<ID3D12Resource> DSVHeap;
-	inline D3D12_GPU_DESCRIPTOR_HANDLE DSVHandle{};
+	inline Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> DSVHeap;
+	inline D3D12_CPU_DESCRIPTOR_HANDLE DSVHandle{};
 
 	// CPU/GPU synchronization
 	
@@ -44,6 +44,21 @@ namespace Graphics
 	
 	// Debug Layer
 	inline Microsoft::WRL::ComPtr<ID3D12InfoQueue> InfoQueue;
+
+	// Getters
+	unsigned int SwapChainIndex();
+
+	// General functions
+	void AdvanceSwapChainIndex();
+
+	// Resource creation
+	Microsoft::WRL::ComPtr <ID3D12Resource > CreateStaticBuffer(
+		size_t dataStride, size_t dataCount, void* data);
+
+	// Command list & synchronization
+	void ResetAllocatorAndCommandList();
+	void CloseAndExecuteCommandList();
+	void WaitForGPU();
 
 	// --- FUNCTIONS ---
 
