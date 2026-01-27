@@ -323,6 +323,7 @@ void Game::Draw(float deltaTime, float totalTime)
 
 	// Rendering here!
 	{
+		// Optimization: Have less pipeline state changes by grouping draws with same state
 		// Set overall pipeline state
 		Graphics::CommandList->SetPipelineState(pipelineState.Get());
 
@@ -335,6 +336,7 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		Graphics::CommandList->RSSetViewports(1, &viewport);
 		Graphics::CommandList->RSSetScissorRects(1, &scissorRect);
+
 		Graphics::CommandList->IASetVertexBuffers(0, 1, &vbView);
 		Graphics::CommandList->IASetIndexBuffer(&ibView);
 		Graphics::CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
