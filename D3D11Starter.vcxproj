@@ -155,20 +155,51 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Game.cpp" />
-    <ClCompile Include="Graphics.cpp" />
-    <ClCompile Include="Input.cpp" />
+    <ClCompile Include="Components\Camera.cpp" />
+    <ClCompile Include="Components\FPSCamera.cpp" />
+    <ClCompile Include="Components\GameObject.cpp" />
+    <ClCompile Include="Components\Material.cpp" />
+    <ClCompile Include="Components\Mesh.cpp" />
+    <ClCompile Include="Components\Transform.cpp" />
+    <ClCompile Include="Helper\OBJLoader.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="MainComponents\Game.cpp" />
+    <ClCompile Include="MainComponents\Graphics.cpp" />
+    <ClCompile Include="MainComponents\Input.cpp" />
+    <ClCompile Include="MainComponents\Window.cpp" />
     <ClCompile Include="PathHelpers.cpp" />
-    <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Game.h" />
-    <ClInclude Include="Graphics.h" />
-    <ClInclude Include="Input.h" />
+    <ClInclude Include="Components\Camera.h" />
+    <ClInclude Include="Components\Component.h" />
+    <ClInclude Include="Components\FPSCamera.h" />
+    <ClInclude Include="Components\GameObject.h" />
+    <ClInclude Include="Components\Material.h" />
+    <ClInclude Include="Components\Mesh.h" />
+    <ClInclude Include="Components\Transform.h" />
+    <ClInclude Include="Helper\OBJLoader.h" />
+    <ClInclude Include="Interfaces\IComponent.h" />
+    <ClInclude Include="Interfaces\IDrawable.h" />
+    <ClInclude Include="Interfaces\IRenderable.h" />
+    <ClInclude Include="Interfaces\ISerializable.h" />
+    <ClInclude Include="Interfaces\IUpdatable.h" />
+    <ClInclude Include="MainComponents\Game.h" />
+    <ClInclude Include="MainComponents\Graphics.h" />
+    <ClInclude Include="MainComponents\Input.h" />
+    <ClInclude Include="MainComponents\Window.h" />
     <ClInclude Include="PathHelpers.h" />
+    <ClInclude Include="Structures\BillBoardVertex.h" />
+    <ClInclude Include="Structures\BufType.h" />
+    <ClInclude Include="Structures\Edge.h" />
+    <ClInclude Include="Structures\ExternalData.h" />
+    <ClInclude Include="Structures\LightStruct.h" />
+    <ClInclude Include="Structures\MeshData.h" />
+    <ClInclude Include="Structures\NavTile.h" />
+    <ClInclude Include="Structures\Particle.h" />
+    <ClInclude Include="Structures\PhysicsData.h" />
+    <ClInclude Include="Structures\Triangle.h" />
+    <ClInclude Include="Structures\Vertex.h" />
     <ClInclude Include="Vertex.h" />
-    <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="PixelShader.hlsl">

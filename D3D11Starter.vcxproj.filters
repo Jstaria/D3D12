@@ -13,44 +13,143 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Structures">
+      <UniqueIdentifier>{351bac81-580e-45ec-afff-1961b5f7e9a9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Interfaces">
+      <UniqueIdentifier>{65942465-113d-4133-8f5e-257692b1f10d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Window.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Game.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="PathHelpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Input.cpp">
+    <ClCompile Include="MainComponents\Game.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MainComponents\Graphics.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MainComponents\Input.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MainComponents\Window.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Components\FPSCamera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Components\GameObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Components\Material.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Components\Mesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Components\Transform.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Helper\OBJLoader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Components\Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Window.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Game.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="PathHelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Vertex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Input.h">
+    <ClInclude Include="Structures\BillBoardVertex.h">
+      <Filter>Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structures\BufType.h">
+      <Filter>Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structures\Edge.h">
+      <Filter>Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structures\ExternalData.h">
+      <Filter>Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structures\LightStruct.h">
+      <Filter>Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structures\MeshData.h">
+      <Filter>Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structures\NavTile.h">
+      <Filter>Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structures\Particle.h">
+      <Filter>Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structures\PhysicsData.h">
+      <Filter>Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structures\Triangle.h">
+      <Filter>Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structures\Vertex.h">
+      <Filter>Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="MainComponents\Game.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MainComponents\Graphics.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MainComponents\Input.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MainComponents\Window.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\IComponent.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\IDrawable.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\IRenderable.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\ISerializable.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\IUpdatable.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Components\Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Components\Component.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Components\FPSCamera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Components\GameObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Components\Material.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Components\Mesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Components\Transform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Helper\OBJLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

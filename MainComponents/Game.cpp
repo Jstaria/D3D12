@@ -1,8 +1,8 @@
 #include "Game.h"
 #include "Graphics.h"
-#include "Vertex.h"
+#include "../Vertex.h"
 #include "Input.h"
-#include "PathHelpers.h"
+#include "../PathHelpers.h"
 #include "Window.h"
 
 #include <DirectXMath.h>
@@ -82,11 +82,19 @@ void Game::CreateRootSigAndPipelineState()
 
 	// Root Signature
 	{
+		//// Setup root parameter
+		//D3D12_ROOT_PARAMETER param{};
+		//param.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		//param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		//param.Constants.ShaderRegister = 0;
+		//param.Constants.RegisterSpace = 0;
+		//param.Constants.Num32BitValues = 3;
+		
 		// Describe and serialize the root signature
 		D3D12_ROOT_SIGNATURE_DESC rootSig = {};
 		rootSig.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-		rootSig.NumParameters = 0;
-		rootSig.pParameters = 0;
+		rootSig.NumParameters = 0;//1;
+		rootSig.pParameters = 0;//&param;
 		rootSig.NumStaticSamplers = 0;
 		rootSig.pStaticSamplers = 0;
 		ID3DBlob* serializedRootSig = 0;
@@ -329,6 +337,10 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		// Root sig (must happen before root descriptor table)
 		Graphics::CommandList->SetGraphicsRootSignature(rootSignature.Get());
+
+		//XMFLOAT3 data(sin(totalTime), 0, 0);
+
+		//Graphics::CommandList->SetGraphicsRoot32BitConstants(0, 3, &data, 0);
 
 		// Set up other commands for rendering
 		Graphics::CommandList->OMSetRenderTargets(
