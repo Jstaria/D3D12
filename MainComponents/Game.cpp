@@ -4,7 +4,6 @@
 #include "Input.h"
 #include "../PathHelpers.h"
 #include "Window.h"
-
 #include <DirectXMath.h>
 
 // Needed for a helper function to load pre-compiled shader files
@@ -213,7 +212,11 @@ void Game::CreateRootSigAndPipelineState()
 // --------------------------------------------------------
 void Game::CreateGeometry()
 {
+	camera = std::make_shared<FPSCamera>("MainCamera", XMFLOAT3(0, 0, -10.0f), 5.0f, .002f, 80, Window::AspectRatio(), 0.01f, 1000.0f);
 
+	std::shared_ptr<Mesh> cube = std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/cube.obj").c_str());
+
+	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Cube", cube, nullptr, nullptr)));
 }
 
 // --------------------------------------------------------
@@ -252,6 +255,8 @@ void Game::OnResize()
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
 {
+	camera->Update(deltaTime);
+
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))
 		Window::Quit();
@@ -264,7 +269,7 @@ void Game::Update(float deltaTime, float totalTime)
 void Game::Draw(float deltaTime, float totalTime)
 {
 	// Grab the current back buffer for this frame
-		Microsoft::WRL::ComPtr<ID3D12Resource> currentBackBuffer =
+	Microsoft::WRL::ComPtr<ID3D12Resource> currentBackBuffer =
 		Graphics::BackBuffers[Graphics::SwapChainIndex()];
 
 	// Clearing the render target
@@ -310,21 +315,32 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		//XMFLOAT3 data(sin(totalTime), 0, 0);
 
+		
+
+
 		//Graphics::CommandList->SetGraphicsRoot32BitConstants(0, 3, &data, 0);
 
 		// Set up other commands for rendering
-		/*Graphics::CommandList->OMSetRenderTargets(
+		Graphics::CommandList->OMSetRenderTargets(
 			1, &Graphics::RTVHandles[Graphics::SwapChainIndex()], true, &Graphics::DSVHandle);
+
+		Graphics::CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		Graphics::CommandList->RSSetViewports(1, &viewport);
 		Graphics::CommandList->RSSetScissorRects(1, &scissorRect);
+		Graphics::CommandList->SetDescriptorHeaps(1, Graphics::CBVSRVDescriptorHeap.GetAddressOf());
 
-		Graphics::CommandList->IASetVertexBuffers(0, 1, &vbView);
-		Graphics::CommandList->IASetIndexBuffer(&ibView);
-		Graphics::CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		for (auto& g : gameObjs) {
+			ExternalData camData{};
+			camData.viewMatrix = camera->GetView();
+			camData.projMatrix = camera->GetProjection();
+			camData.worldMatrix = g->GetTransform()->GetWorldMatrix();
 
-		// Draw
-		Graphics::CommandList->DrawIndexedInstanced(3, 1, 0, 0, 0);*/
+			D3D12_GPU_DESCRIPTOR_HANDLE handle = Graphics::FillNextConstBufAndGetGPUDescHan((void*)(&camData), sizeof(ExternalData));
+			Graphics::CommandList->SetGraphicsRootDescriptorTable(0, handle);
+
+			g->Draw();
+		}
 	}
 
 	// Present
@@ -348,8 +364,8 @@ void Game::Draw(float deltaTime, float totalTime)
 		bool vsync = Graphics::VsyncState();
 
 		Graphics::SwapChain->Present(
-		vsync ? 1 : 0,
-		vsync ? 0 : DXGI_PRESENT_ALLOW_TEARING);
+			vsync ? 1 : 0,
+			vsync ? 0 : DXGI_PRESENT_ALLOW_TEARING);
 
 		Graphics::AdvanceSwapChainIndex();
 

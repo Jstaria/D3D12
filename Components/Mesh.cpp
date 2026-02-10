@@ -244,13 +244,9 @@ bool Mesh::GetToggleWireFrame() { return wireFrameToggle; }
 
 void Mesh::Draw()
 {
-	UINT stride = sizeof(Vertex);
-	UINT offset = 0;
+	Graphics::CommandList->IASetVertexBuffers(0, 1, &vbView);
+	Graphics::CommandList->IASetIndexBuffer(&ibView);
 
-	// Graphics::Context->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
-	// Graphics::Context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-	// 
-	// Graphics::Context->DrawIndexed((int)meshData.vertices.size(), 0, 0);
-
-
+	// Draw
+	Graphics::CommandList->DrawIndexedInstanced((UINT)meshData.indices.size(), 1, 0, 0, 0);
 }

@@ -211,13 +211,16 @@ HRESULT Graphics::Initialize(unsigned int windowWidth, unsigned int windowHeight
 	}
 
 	{
+		cbvDescriptorOffset = 0;
 		cbUploadHeapSizeInBytes = maxConstantBuffers * 256;
-		cbvSrvDescriptorHeapIncrementSize = 256;
+		cbUploadHeapOffsetInBytes = 0;
 
 		D3D12_DESCRIPTOR_HEAP_DESC CBVSRVDesc{};
 		CBVSRVDesc.NumDescriptors = maxConstantBuffers;
 		CBVSRVDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		CBVSRVDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		CBVSRVDesc.NodeMask = 0;
+		
 		Device->CreateDescriptorHeap(&CBVSRVDesc, IID_PPV_ARGS(CBVSRVDescriptorHeap.GetAddressOf()));
 
 		// Describes the final heap
@@ -241,18 +244,16 @@ HRESULT Graphics::Initialize(unsigned int windowWidth, unsigned int windowHeight
 		desc.SampleDesc.Quality = 0;
 		desc.Width = cbUploadHeapSizeInBytes; // Size of the buffer
 
-		// Note that even though we're starting this buffer in the "common" resource
-		// state, it will be implicitly transitioned to the "copy destination" state
-		// when used for a copy operation below. For more info, see:
-		// https://learn.microsoft.com/en-us/windows/win32/direct3d12/user-mode-heap-synchronization#multi-queue-resource-access
 		Device->CreateCommittedResource(
 			&props,
 			D3D12_HEAP_FLAG_NONE,
 			&desc,
-			D3D12_RESOURCE_STATE_GENERIC_READ, // Must start in "common" state to avoid warning
+			D3D12_RESOURCE_STATE_GENERIC_READ, 
 			0,
 			IID_PPV_ARGS(CBUploadHeap.GetAddressOf()));
 
+		D3D12_RANGE range{ 0,0 };
+		CBUploadHeap->Map(0, &range, &cbUploadHeapStartAddress);
 	}
 
 	// Lastly, create the initial back& depth buffers and descriptors for them

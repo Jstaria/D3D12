@@ -2,6 +2,16 @@
 
 #include <d3d12.h>
 #include <wrl/client.h>
+#include <vector>
+
+#include "../Structures/MeshData.h"
+#include "../Structures/ExternalData.h"
+
+#include "../Components/GameObject.h"
+#include "../Components/FPSCamera.h"
+
+#include "../Helper/OBJLoader.h"
+#include "../Helper/PathHelpers.h"
 
 class Game
 {
@@ -37,10 +47,15 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW vbView{};
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> indexBuffer;
-	D3D12_INDEX_BUFFER_VIEW ibView{}
-	;
+	D3D12_INDEX_BUFFER_VIEW ibView{};
+
 	// Other graphics data
 	D3D12_VIEWPORT viewport{};
 	D3D12_RECT scissorRect{};
+
+	std::vector<std::shared_ptr<GameObject>> gameObjs;
+	std::shared_ptr<FPSCamera> camera;
+
+
 };
 
