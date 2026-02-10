@@ -72,41 +72,17 @@ void Mesh::InitializeMesh(MeshData meshD)
 
 void Mesh::CreateMesh(MeshData& meshData)
 {
-	// --- Create Vertex Buffer ---
-	{
-		unsigned int vertexCount = (unsigned int)meshData.vertices.size();
+	// Create the two buffers
+	vertexBuffer = Graphics::CreateStaticBuffer(sizeof(Vertex), meshData.vertices.size(), &meshData.vertices);
+	indexBuffer = Graphics::CreateStaticBuffer(sizeof(unsigned int), meshData.indices.size(), &meshData.indices);
 
-		D3D11_BUFFER_DESC vbd = {};
-		vbd.Usage = D3D11_USAGE_IMMUTABLE;
-		vbd.ByteWidth = sizeof(Vertex) * vertexCount;
-		vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		vbd.CPUAccessFlags = 0;
-		vbd.MiscFlags = 0;
-		vbd.StructureByteStride = 0;
-
-		D3D11_SUBRESOURCE_DATA vertexData = {};
-		vertexData.pSysMem = &meshData.vertices[0];
-
-		//Graphics::CreateStaticBuffer(0, vertexCount, &vertexData);
-	}
-
-	// --- Create Index Buffer ---
-	{
-		unsigned int indexCount = (unsigned int)meshData.indices.size();
-
-		D3D11_BUFFER_DESC ibd = {};
-		ibd.Usage = D3D11_USAGE_IMMUTABLE;
-		ibd.ByteWidth = sizeof(unsigned int) * indexCount;
-		ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		ibd.CPUAccessFlags = 0;
-		ibd.MiscFlags = 0;
-		ibd.StructureByteStride = 0;
-
-		D3D11_SUBRESOURCE_DATA indexData = {};
-		indexData.pSysMem = &meshData.indices[0];
-
-		//Graphics::Device->CreateBuffer(&ibd, &indexData, indexBuffer.GetAddressOf());
-	}
+	// Set up the views
+	vbView.StrideInBytes = sizeof(Vertex);
+	vbView.SizeInBytes = sizeof(Vertex) * meshData.vertices.size();
+	vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
+	ibView.Format = DXGI_FORMAT_R32_UINT;
+	ibView.SizeInBytes = sizeof(unsigned int) * meshData.indices.size();
+	ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
 }
 
 void Mesh::FindCenterOfMesh(MeshData& meshData)
@@ -248,8 +224,10 @@ void Mesh::CalculateTangents(MeshData& meshData)
 	}
 }
 
-ComPtr<ID3D11Buffer> Mesh::GetVertexBuffer() { return vertexBuffer; }
-ComPtr<ID3D11Buffer> Mesh::GetIndexBuffer() { return indexBuffer; }
+
+D3D12_VERTEX_BUFFER_VIEW Mesh::GetVertexBufferView() { return vbView; }
+D3D12_INDEX_BUFFER_VIEW Mesh::GetIndexBufferView() { return ibView; }
+
 int Mesh::GetVertexCount() { return (int)meshData.vertices.size(); }
 int Mesh::GetIndexCount() { return (int)meshData.indices.size(); }
 const char* Mesh::GetName() { return name; }

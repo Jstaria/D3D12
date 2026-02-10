@@ -13,7 +13,7 @@ namespace Graphics
 {
 	// --- CONSTANTS ---
 	const unsigned int NumBackBuffers = 2;
-	
+
 	// --- GLOBAL VARS ---
 
 	// Primary D3D12 API objects
@@ -21,11 +21,11 @@ namespace Graphics
 	inline Microsoft::WRL::ComPtr<IDXGISwapChain> SwapChain;
 
 	// Command Submission
-	
+
 	inline Microsoft::WRL::ComPtr<ID3D12CommandAllocator> CommandAllocator; // Submits queues
 	inline Microsoft::WRL::ComPtr<ID3D12CommandQueue> CommandQueue; // Queue of command lists
 	inline Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> CommandList; // Series of commands to draw
-	
+
 	// Rendering buffers & descriptors
 
 	inline Microsoft::WRL::ComPtr<ID3D12Resource> BackBuffers[NumBackBuffers];
@@ -36,12 +36,21 @@ namespace Graphics
 	inline Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> DSVHeap;
 	inline D3D12_CPU_DESCRIPTOR_HANDLE DSVHandle{};
 
+	// Maximum number of constant buffers, assuming each buffer
+	// is 256 bytes or less. Larger buffers are fine, but will
+	// result in fewer buffers in use at any time
+	const unsigned int maxConstantBuffers = 1000;
+
+	inline Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CBVSRVDescriptorHeap;
+	inline Microsoft::WRL::ComPtr<ID3D12Resource> CBUploadHeap;
+
+
 	// CPU/GPU synchronization
-	
+
 	inline Microsoft::WRL::ComPtr<ID3D12Fence>  WaitFence;
 	inline HANDLE								WaitFenceEvent = 0;
 	inline UINT64								WaitFenceCounter = 0;
-	
+
 	// Debug Layer
 	inline Microsoft::WRL::ComPtr<ID3D12InfoQueue> InfoQueue;
 
@@ -77,4 +86,8 @@ namespace Graphics
 
 	// Debug Layer
 	void PrintDebugMessages();
+
+	D3D12_GPU_DESCRIPTOR_HANDLE FillNextConstBufAndGetGPUDescHan(
+		void* data,
+		unsigned int dataSizeInBytes);
 }

@@ -1,6 +1,6 @@
 #include "Game.h"
 #include "Graphics.h"
-#include "../Vertex.h"
+#include "../Structures/Vertex.h"
 #include "Input.h"
 #include "../PathHelpers.h"
 #include "Window.h"
@@ -60,41 +60,53 @@ void Game::CreateRootSigAndPipelineState()
 	}
 
 	// Input layout
-	const unsigned int inputElementCount = 2;
+	const unsigned int inputElementCount = 4;
 	D3D12_INPUT_ELEMENT_DESC inputElements[inputElementCount] = {};
-
 	{
-		// Create an input layout that describes the vertex format
-		// used by the vertex shader we're using
-		// - This is used by the pipeline to know how to interpret the raw data
-		// sitting inside a vertex buffer
-		// Set up the first element - a position, which is 3 float values
 		inputElements[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
-		inputElements[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
-		inputElements[0].SemanticName = "POSITION";
-		inputElements[0].SemanticIndex = 0;
-		// Set up the second element - a color, which is 4 more float values
+		inputElements[0].Format = DXGI_FORMAT_R32G32B32_FLOAT; // R32 G32 B32 = float3
+		inputElements[0].SemanticName = "POSITION"; // Name must match semantic in shader
+		inputElements[0].SemanticIndex = 0; // This is the first POSITION semantic
+
 		inputElements[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
-		inputElements[1].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-		inputElements[1].SemanticName = "COLOR";
-		inputElements[1].SemanticIndex = 0;
+		inputElements[1].Format = DXGI_FORMAT_R32G32_FLOAT; // R32 G32 = float2
+		inputElements[1].SemanticName = "TEXCOORD";
+		inputElements[1].SemanticIndex = 0; // This is the first TEXCOORD semantic
+
+		inputElements[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+		inputElements[2].Format = DXGI_FORMAT_R32G32B32_FLOAT; // R32 G32 B32 = float3
+		inputElements[2].SemanticName = "NORMAL";
+		inputElements[2].SemanticIndex = 0; // This is the first NORMAL semantic
+
+		inputElements[3].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+		inputElements[3].Format = DXGI_FORMAT_R32G32B32_FLOAT; // R32 G32 B32 = float3
+		inputElements[3].SemanticName = "TANGENT";
+		inputElements[3].SemanticIndex = 0; // This is the first TANGENT semantic
 	}
 
 	// Root Signature
 	{
-		//// Setup root parameter
-		//D3D12_ROOT_PARAMETER param{};
-		//param.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-		//param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		//param.Constants.ShaderRegister = 0;
-		//param.Constants.RegisterSpace = 0;
-		//param.Constants.Num32BitValues = 3;
-		
-		// Describe and serialize the root signature
+		// Setup root parameter
+		// Define a table of CBV's (constant buffer views)
+		D3D12_DESCRIPTOR_RANGE cbvTable = {};
+		cbvTable.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		cbvTable.NumDescriptors = 1;
+		cbvTable.BaseShaderRegister = 0;
+		cbvTable.RegisterSpace = 0;
+		cbvTable.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+		// Define the root parameter
+		D3D12_ROOT_PARAMETER rootParam = {};
+		rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParam.DescriptorTable.NumDescriptorRanges = 1;
+		rootParam.DescriptorTable.pDescriptorRanges = &cbvTable;
+
+		// Describe the overall the root signature
 		D3D12_ROOT_SIGNATURE_DESC rootSig = {};
 		rootSig.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-		rootSig.NumParameters = 0;//1;
-		rootSig.pParameters = 0;//&param;
+		rootSig.NumParameters = 1;
+		rootSig.pParameters = &rootParam;
 		rootSig.NumStaticSamplers = 0;
 		rootSig.pStaticSamplers = 0;
 		ID3DBlob* serializedRootSig = 0;
@@ -201,49 +213,7 @@ void Game::CreateRootSigAndPipelineState()
 // --------------------------------------------------------
 void Game::CreateGeometry()
 {
-	// Create some temporary variables to represent colors
-	// - Not necessary, just makes things more readable
-	XMFLOAT4 red = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-	XMFLOAT4 green = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
 
-	// Set up the vertices of the triangle we would like to draw
-	// - We're going to copy this array, exactly as it exists in CPU memory
-	//    over to a Direct3D-controlled data structure on the GPU (the vertex buffer)
-	// - Note: Since we don't have a camera or really any concept of
-	//    a "3d world" yet, we're simply describing positions within the
-	//    bounds of how the rasterizer sees our screen: [-1 to +1] on X and Y
-	// - This means (0,0) is at the very center of the screen.
-	// - These are known as "Normalized Device Coordinates" or "Homogeneous 
-	//    Screen Coords", which are ways to describe a position without
-	//    knowing the exact size (in pixels) of the image/window/etc.  
-	// - Long story short: Resizing the window also resizes the triangle,
-	//    since we're describing the triangle in terms of the window itself
-	Vertex vertices[] =
-	{
-		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), red },
-		{ XMFLOAT3(+0.5f, -0.5f, +0.0f), blue },
-		{ XMFLOAT3(-0.5f, -0.5f, +0.0f), green },
-	};
-
-	// Set up indices, which tell us which vertices to use and in which order
-	// - This is redundant for just 3 vertices, but will be more useful later
-	// - Indices are technically not required if the vertices are in the buffer 
-	//    in the correct order and each one will be used exactly once
-	// - But just to see how it's done...
-	unsigned int indices[] = { 0, 1, 2 };
-
-
-	// Create the two buffers
-	vertexBuffer = Graphics::CreateStaticBuffer(sizeof(Vertex), ARRAYSIZE(vertices), vertices);
-	indexBuffer = Graphics::CreateStaticBuffer(sizeof(unsigned int), ARRAYSIZE(indices), indices);
-	// Set up the views
-	vbView.StrideInBytes = sizeof(Vertex);
-	vbView.SizeInBytes = sizeof(Vertex) * ARRAYSIZE(vertices);
-	vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
-	ibView.Format = DXGI_FORMAT_R32_UINT;
-	ibView.SizeInBytes = sizeof(unsigned int) * ARRAYSIZE(indices);
-	ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
 }
 
 // --------------------------------------------------------
@@ -343,7 +313,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		//Graphics::CommandList->SetGraphicsRoot32BitConstants(0, 3, &data, 0);
 
 		// Set up other commands for rendering
-		Graphics::CommandList->OMSetRenderTargets(
+		/*Graphics::CommandList->OMSetRenderTargets(
 			1, &Graphics::RTVHandles[Graphics::SwapChainIndex()], true, &Graphics::DSVHandle);
 
 		Graphics::CommandList->RSSetViewports(1, &viewport);
@@ -354,7 +324,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		Graphics::CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		// Draw
-		Graphics::CommandList->DrawIndexedInstanced(3, 1, 0, 0, 0);
+		Graphics::CommandList->DrawIndexedInstanced(3, 1, 0, 0, 0);*/
 	}
 
 	// Present

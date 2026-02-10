@@ -17,8 +17,10 @@ class Mesh : public IDrawable
 {
 private:
 	// --- Mesh Buffers ---
-	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
-	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
+	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer;
+	D3D12_VERTEX_BUFFER_VIEW vbView{};
+	Microsoft::WRL::ComPtr<ID3D12Resource> indexBuffer;
+	D3D12_INDEX_BUFFER_VIEW ibView{};
 
 	MeshData meshData;
 
@@ -43,8 +45,8 @@ public:
 	~Mesh();
 
 	// --- Mesh Getters ---
-	Microsoft::WRL::ComPtr<ID3D11Buffer> GetVertexBuffer();
-	Microsoft::WRL::ComPtr<ID3D11Buffer> GetIndexBuffer();
+	D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView();
+	D3D12_INDEX_BUFFER_VIEW GetIndexBufferView();
 	int GetVertexCount();
 	int GetIndexCount();
 	const char* GetName() override;
