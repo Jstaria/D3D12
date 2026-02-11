@@ -53,6 +53,7 @@ private:
 	D3D12_VIEWPORT viewport{};
 	D3D12_RECT scissorRect{};
 
+	std::vector<std::shared_ptr<IDrawable>> drawables;
 	std::vector<std::shared_ptr<GameObject>> gameObjs;
 	std::shared_ptr<FPSCamera> camera;
 

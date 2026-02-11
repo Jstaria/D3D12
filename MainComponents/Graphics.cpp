@@ -212,8 +212,11 @@ HRESULT Graphics::Initialize(unsigned int windowWidth, unsigned int windowHeight
 
 	{
 		cbvDescriptorOffset = 0;
-		cbUploadHeapSizeInBytes = maxConstantBuffers * 256;
+		cbUploadHeapSizeInBytes = (UINT64)maxConstantBuffers * 256;
 		cbUploadHeapOffsetInBytes = 0;
+		cbvSrvDescriptorHeapIncrementSize = 
+			(SIZE_T)Device->GetDescriptorHandleIncrementSize(
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		D3D12_DESCRIPTOR_HEAP_DESC CBVSRVDesc{};
 		CBVSRVDesc.NumDescriptors = maxConstantBuffers;

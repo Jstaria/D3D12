@@ -78,10 +78,10 @@ void Mesh::CreateMesh(MeshData& meshData)
 
 	// Set up the views
 	vbView.StrideInBytes = sizeof(Vertex);
-	vbView.SizeInBytes = sizeof(Vertex) * meshData.vertices.size();
+	vbView.SizeInBytes = (UINT)(sizeof(Vertex) * meshData.vertices.size());
 	vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
 	ibView.Format = DXGI_FORMAT_R32_UINT;
-	ibView.SizeInBytes = sizeof(unsigned int) * meshData.indices.size();
+	ibView.SizeInBytes = (UINT)(sizeof(unsigned int) * meshData.indices.size());
 	ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
 }
 

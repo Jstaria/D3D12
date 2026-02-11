@@ -39,40 +39,40 @@ DirectX::XMFLOAT4 Material::GetTintColor() { return colorTint; }
 DirectX::XMFLOAT3 Material::GetAmbientColor() { return ambientTint; }
 const char* Material::GetName() { return name; }
 
-Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Material::GetTextureSRV(const char* name) { return textures[name]; }
-Microsoft::WRL::ComPtr<ID3D11SamplerState> Material::GetSampler(const char* name) { return samplers[name]; }
-std::unordered_map<const char*, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>> Material::GetTextureSRVs() { return textures; }
-std::unordered_map<const char*, Microsoft::WRL::ComPtr<ID3D11SamplerState>> Material::GetSamplers() { return samplers; }
+//Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Material::GetTextureSRV(const char* name) { return textures[name]; }
+//Microsoft::WRL::ComPtr<ID3D11SamplerState> Material::GetSampler(const char* name) { return samplers[name]; }
+//std::unordered_map<const char*, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>> Material::GetTextureSRVs() { return textures; }
+//std::unordered_map<const char*, Microsoft::WRL::ComPtr<ID3D11SamplerState>> Material::GetSamplers() { return samplers; }
 
 unsigned int Material::GetMatIndex() { return materialIndex; }
 
-void Material::AddTextureSRV(const char* name, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> textureSRV) { textures.insert({ name, textureSRV }); }
-void Material::AddSampler(const char* name, Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler) { samplers.insert({ name, sampler }); }
+//void Material::AddTextureSRV(const char* name, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> textureSRV) { textures.insert({ name, textureSRV }); }
+//void Material::AddSampler(const char* name, Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler) { samplers.insert({ name, sampler }); }
 void Material::SetAmbientTint(DirectX::XMFLOAT3 ambient) { this->ambientTint = ambient; }
 void Material::SetTint(DirectX::XMFLOAT4 tint) { this->colorTint = tint; }
 void Material::SetIndex() { /*materialIndex = GlobalVar::Material::getIndexThenTick();*/ }
 void Material::SetUVScale(DirectX::XMFLOAT2 scale) { this->scale = scale; }
 void Material::SetUVOffset(DirectX::XMFLOAT2 offset) { this->offset = offset; }
 
-Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Material::RemoveTextureSRV(const char* name)
-{
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
-	std::memcpy(srv.GetAddressOf(), textures[name].GetAddressOf(), sizeof(ComPtr<ID3D11ShaderResourceView>));
-
-	textures.erase(name);
-
-	return srv;
-}
-
-Microsoft::WRL::ComPtr<ID3D11SamplerState> Material::RemoveSampler(const char* name)
-{
-	Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler;
-	std::memcpy(sampler.GetAddressOf(), samplers[name].GetAddressOf(), sizeof(ComPtr<ID3D11SamplerState>));
-
-	textures.erase(name);
-
-	return sampler;
-}
+//Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Material::RemoveTextureSRV(const char* name)
+//{
+//	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
+//	std::memcpy(srv.GetAddressOf(), textures[name].GetAddressOf(), sizeof(ComPtr<ID3D11ShaderResourceView>));
+//
+//	textures.erase(name);
+//
+//	return srv;
+//}
+//
+//Microsoft::WRL::ComPtr<ID3D11SamplerState> Material::RemoveSampler(const char* name)
+//{
+//	Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler;
+//	std::memcpy(sampler.GetAddressOf(), samplers[name].GetAddressOf(), sizeof(ComPtr<ID3D11SamplerState>));
+//
+//	textures.erase(name);
+//
+//	return sampler;
+//}
 
 //void Material::ImGuiDraw()
 //{

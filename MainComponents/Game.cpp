@@ -108,6 +108,7 @@ void Game::CreateRootSigAndPipelineState()
 		rootSig.pParameters = &rootParam;
 		rootSig.NumStaticSamplers = 0;
 		rootSig.pStaticSamplers = 0;
+
 		ID3DBlob* serializedRootSig = 0;
 		ID3DBlob* errors = 0;
 
@@ -214,9 +215,10 @@ void Game::CreateGeometry()
 {
 	camera = std::make_shared<FPSCamera>("MainCamera", XMFLOAT3(0, 0, -10.0f), 5.0f, .002f, 80, Window::AspectRatio(), 0.01f, 1000.0f);
 
-	std::shared_ptr<Mesh> cube = std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/cube.obj").c_str());
+	drawables.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/torus.obj").c_str()));
 
-	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Cube", cube, nullptr, nullptr)));
+	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Cube", drawables[0], nullptr, nullptr)));
+	//gameObjs[0]->GetTransform()->SetScale(.1f);
 }
 
 // --------------------------------------------------------
@@ -313,22 +315,20 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Root sig (must happen before root descriptor table)
 		Graphics::CommandList->SetGraphicsRootSignature(rootSignature.Get());
 
-		//XMFLOAT3 data(sin(totalTime), 0, 0);
-
-		
-
-
-		//Graphics::CommandList->SetGraphicsRoot32BitConstants(0, 3, &data, 0);
-
 		// Set up other commands for rendering
+		Graphics::CommandList->SetDescriptorHeaps(1, Graphics::CBVSRVDescriptorHeap.GetAddressOf());
+
 		Graphics::CommandList->OMSetRenderTargets(
 			1, &Graphics::RTVHandles[Graphics::SwapChainIndex()], true, &Graphics::DSVHandle);
 
-		Graphics::CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 		Graphics::CommandList->RSSetViewports(1, &viewport);
 		Graphics::CommandList->RSSetScissorRects(1, &scissorRect);
-		Graphics::CommandList->SetDescriptorHeaps(1, Graphics::CBVSRVDescriptorHeap.GetAddressOf());
+		
+		Graphics::CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		XMFLOAT3 fwd = camera->GetTransform()->GetForward();
+		printf("Camera Fwd: %f %f %f\n", fwd.x, fwd.y, fwd.z);
+
 
 		for (auto& g : gameObjs) {
 			ExternalData camData{};

@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include "DirectXMath.h"
 #include <vector>
+#include <unordered_map>
+#include <string>
 #include "../Structures/Vertex.h"
 #include "../Structures/MeshData.h"
 
