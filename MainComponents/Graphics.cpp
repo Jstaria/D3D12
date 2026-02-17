@@ -21,7 +21,7 @@ namespace Graphics
 
 		D3D_FEATURE_LEVEL featureLevel{};
 		unsigned int currentBackBufferIndex = 0;
-	
+
 		// Descriptor heap management
 		SIZE_T cbvSrvDescriptorHeapIncrementSize = 0;
 		unsigned int cbvDescriptorOffset = 0;
@@ -30,6 +30,11 @@ namespace Graphics
 		UINT64 cbUploadHeapSizeInBytes = 0;
 		UINT64 cbUploadHeapOffsetInBytes = 0;
 		void* cbUploadHeapStartAddress = 0;
+
+		unsigned int srvDescriptorOffset = MaxConstantBuffers; // Assume SRVs start after CBVs
+
+		// Texture resources we need to keep alive
+		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> textures;
 	}
 }
 
@@ -216,11 +221,11 @@ HRESULT Graphics::Initialize(unsigned int windowWidth, unsigned int windowHeight
 		cbUploadHeapOffsetInBytes = 0;
 
 		D3D12_DESCRIPTOR_HEAP_DESC CBVSRVDesc{};
-		CBVSRVDesc.NumDescriptors = maxConstantBuffers;
+		CBVSRVDesc.NumDescriptors = MaxConstantBuffers + MaxTextureDescriptors;
 		CBVSRVDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		CBVSRVDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		CBVSRVDesc.NodeMask = 0;
-		
+
 		Device->CreateDescriptorHeap(&CBVSRVDesc, IID_PPV_ARGS(CBVSRVDescriptorHeap.GetAddressOf()));
 
 		// Describes the final heap
@@ -248,7 +253,7 @@ HRESULT Graphics::Initialize(unsigned int windowWidth, unsigned int windowHeight
 			&props,
 			D3D12_HEAP_FLAG_NONE,
 			&desc,
-			D3D12_RESOURCE_STATE_GENERIC_READ, 
+			D3D12_RESOURCE_STATE_GENERIC_READ,
 			0,
 			IID_PPV_ARGS(CBUploadHeap.GetAddressOf()));
 
@@ -645,7 +650,7 @@ D3D12_GPU_DESCRIPTOR_HANDLE Graphics::FillNextConstBufAndGetGPUDescHan(
 	{
 		// Calculate the actual upload address (which we got from mapping the buffer)
 		// Note that this is different than the GPU virtual address needed for the CBV below
-		
+
 		void* add = reinterpret_cast<void*>((SIZE_T)cbUploadHeapStartAddress + cbUploadHeapOffsetInBytes);
 
 		// Perform the mem copy to put new data into this part of the heap
@@ -671,10 +676,10 @@ D3D12_GPU_DESCRIPTOR_HANDLE Graphics::FillNextConstBufAndGetGPUDescHan(
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvViewDesc{};
 		cbvViewDesc.BufferLocation = virtualGPUAddress;
 		cbvViewDesc.SizeInBytes = (UINT)reservationSize;
-		
+
 		// Create the CBV, which is a lightweight operation in D3D12
 		Device->CreateConstantBufferView(&cbvViewDesc, cpuHandle);
-		
+
 		// Increment the offset and loop back to the beginning if necessary
 		// which allows us to treat the descriptor heap as a ring buffer
 		cbvDescriptorOffset = (cbvDescriptorOffset + 1) % maxConstantBuffers;
@@ -684,4 +689,44 @@ D3D12_GPU_DESCRIPTOR_HANDLE Graphics::FillNextConstBufAndGetGPUDescHan(
 
 		return gpuHandle;
 	}
+}
+
+unsigned int Graphics::LoadTexture(const wchar_t* file, bool generateMips)
+{
+	// Helper function from DXTK for uploading a resource
+		// (like a texture) to the appropriate GPU memory
+	DirectX::ResourceUploadBatch upload(Device.Get());
+
+	upload.Begin();
+
+	// Attempt to create the texture
+	Microsoft::WRL::ComPtr <ID3D12Resource > texture;
+	DirectX::CreateWICTextureFromFile(
+		Device.Get(), upload, file, texture.GetAddressOf(), generateMips);
+
+	// Perform the upload and wait for it to finish before moving on
+	auto finish = upload.End(CommandQueue.Get());
+	finish.wait();
+
+	// Now that we have the texture, save the ComPtr so it doesn’t get cleaned up
+	textures.push_back(texture);
+
+	// Save the index of this descriptor and increment the overall offset
+	unsigned int srvIndex = srvDescriptorOffset;
+	srvDescriptorOffset++;
+
+	// Create the SRV in the descriptor heap at the appropriate offset . When calling
+	// CreateShaderResourceView(), you can use null (zero) for the SRV_DESC param
+	// to get a default SRV that can see all potential subresources of the texture.
+
+	D3D12_CPU_DESCRIPTOR_HANDLE handle = CBVSRVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	handle.ptr = srvIndex + Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	 Device->CreateShaderResourceView(
+		texture.Get(), 
+		nullptr,
+		handle);
+
+	// Send back the index of the descriptor
+	return srvIndex;
 }

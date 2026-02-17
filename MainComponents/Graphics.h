@@ -5,6 +5,9 @@
 #include <dxgi1_6.h>
 #include <string>
 #include <wrl/client.h>
+#include <vector>
+#include "WICTextureLoader.h"
+#include "ResourceUploadBatch.h"
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -44,6 +47,8 @@ namespace Graphics
 	inline Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CBVSRVDescriptorHeap;
 	inline Microsoft::WRL::ComPtr<ID3D12Resource> CBUploadHeap;
 
+	// Maximum number of texture descriptors (SRVs) we can have.
+	const unsigned int MaxTextureDescriptors = 100;
 
 	// CPU/GPU synchronization
 
@@ -90,4 +95,6 @@ namespace Graphics
 	D3D12_GPU_DESCRIPTOR_HANDLE FillNextConstBufAndGetGPUDescHan(
 		void* data,
 		unsigned int dataSizeInBytes);
+
+	unsigned int LoadTexture(const wchar_t* file, bool generateMips = true);
 }

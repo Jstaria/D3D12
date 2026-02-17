@@ -12,43 +12,45 @@
 #include "../Components/Transform.h"
 #include "../Structures/ExternalData.h"
 
+enum TextureID {
+	ALBEDO,
+	NORMAL_MAP,
+	METALNESS,
+	ROUGHNESS,
+	EMISSION,
+	PARALLAX
+};
+
 class Material
 {
 private:
-	//std::shared_ptr<SimpleVertexShader> vs;
-	//std::shared_ptr<SimplePixelShader> ps;
+	std::shared_ptr<ID3D12PipelineState> PS;
 	DirectX::XMFLOAT4 colorTint;
 	DirectX::XMFLOAT3 ambientTint;
 	const char* name;
 
-	DirectX::XMFLOAT2 offset;
-	DirectX::XMFLOAT2 scale;
+	DirectX::XMFLOAT2 uvOffset;
+	DirectX::XMFLOAT2 uvScale;
 
 	unsigned int materialIndex;
 
-	std::unordered_map<const char*, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>> textures;
-	std::unordered_map<const char*, Microsoft::WRL::ComPtr<ID3D11SamplerState>> samplers;
+	std::unordered_map<TextureID, unsigned int> textures;
+	//std::unordered_map<const char*, Microsoft::WRL::ComPtr<ID3D11SamplerState>> samplers;
 
 public:
-	//Material(const char* name, std::shared_ptr<SimpleVertexShader> vs, std::shared_ptr<SimplePixelShader> ps, DirectX::XMFLOAT4 color);
+	Material(const char* name, std::unordered_map<TextureID, unsigned int> textures, DirectX::XMFLOAT4 color);
 
 	void SetDefaultShaderParam(ExternalData data, Transform* transform, Transform* camTransform);
 
 	// -=| Getters |=-
-	//std::shared_ptr<SimpleVertexShader> GetVS();
-	//std::shared_ptr<SimplePixelShader> GetPS();
 	DirectX::XMFLOAT4 GetTintColor();
 	DirectX::XMFLOAT3 GetAmbientColor();
 	const char* GetName();
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> GetTextureSRV(const char* name);
-	Microsoft::WRL::ComPtr<ID3D11SamplerState> GetSampler(const char* name);
-	std::unordered_map<const char*, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>> GetTextureSRVs();
-	std::unordered_map<const char*, Microsoft::WRL::ComPtr<ID3D11SamplerState>> GetSamplers();
+	unsigned int GetTextureID(TextureID ID);
 	unsigned int GetMatIndex();
 
 	// -=| Setters/Adders |=-
-	void AddTextureSRV(const char* name, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> textureSRV);
-	void AddSampler(const char* name, Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler);
+	void AddTextureSRV(TextureID textureID, unsigned int id);
 	void SetAmbientTint(DirectX::XMFLOAT3 ambientTint);
 	void SetTint(DirectX::XMFLOAT4 tint);
 	void SetIndex();
@@ -56,8 +58,8 @@ public:
 	void SetUVOffset(DirectX::XMFLOAT2 offset);
 
 	// -=| Removers |=-
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> RemoveTextureSRV(const char* name);
-	Microsoft::WRL::ComPtr<ID3D11SamplerState> RemoveSampler(const char* name);
+	//Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> RemoveTextureSRV(const char* name);
+	//Microsoft::WRL::ComPtr<ID3D11SamplerState> RemoveSampler(const char* name);
 
 	// -=| Other |=-
 	//void ImGuiDraw();
