@@ -180,7 +180,7 @@ HRESULT Graphics::Initialize(unsigned int windowWidth, unsigned int windowHeight
 		swapDesc.Windowed = true;
 
 		// Create a DXGI factory, which is what we use to create a swap chain
-		Microsoft::WRL::ComPtr <IDXGIFactory > dxgiFactory;
+		Microsoft::WRL::ComPtr <IDXGIFactory> dxgiFactory;
 		CreateDXGIFactory(IID_PPV_ARGS(dxgiFactory.GetAddressOf()));
 		HRESULT swapResult = dxgiFactory->CreateSwapChain(
 			CommandQueue.Get(), &swapDesc, SwapChain.GetAddressOf());

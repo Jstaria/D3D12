@@ -73,8 +73,8 @@ void Mesh::InitializeMesh(MeshData meshD)
 void Mesh::CreateMesh(MeshData& meshData)
 {
 	// Create the two buffers
-	vertexBuffer = Graphics::CreateStaticBuffer(sizeof(Vertex), meshData.vertices.size(), &meshData.vertices);
-	indexBuffer = Graphics::CreateStaticBuffer(sizeof(unsigned int), meshData.indices.size(), &meshData.indices);
+	vertexBuffer = Graphics::CreateStaticBuffer(sizeof(Vertex), meshData.vertices.size(), &meshData.vertices[0]);
+	indexBuffer = Graphics::CreateStaticBuffer(sizeof(unsigned int), meshData.indices.size(), &meshData.indices[0]);
 
 	// Set up the views
 	vbView.StrideInBytes = sizeof(Vertex);
