@@ -29,6 +29,9 @@ MeshData OBJLoader::LoadOBJ(const char* objFile)
 // *************************************
 
 // File input object
+// Set indicies to 0 in the event the file reading fails
+
+	// File input object
 	std::ifstream obj(objFile);
 
 	// Check for successful open
@@ -38,12 +41,11 @@ MeshData OBJLoader::LoadOBJ(const char* objFile)
 	// Variables used while reading the file
 	std::vector<XMFLOAT3> positions;	// Positions from the file
 	std::vector<XMFLOAT3> normals;		// Normals from the file
-	std::vector<XMFLOAT2> uvs;		// UVs from the file
-	std::vector<Vertex> verts;		// Verts we're assembling
-	std::vector<unsigned int> indices;		// Indices of these verts
-	int vertCounter = 0;			// Count of vertices
-	int indexCounter = 0;			// Count of indices
-	char chars[100];			// String for line reading
+	std::vector<XMFLOAT2> uvs;			// UVs from the file
+	std::vector<Vertex> vertsFromFile;	// Verts from file (including duplicates)
+	std::vector<Vertex> finalVertices;	// Final, de-duplicated verts
+	std::vector<UINT> finalIndices;		// Indices for final verts
+	char chars[100];					// String for line reading
 
 	// Still have data left?
 	while (obj.good())
@@ -55,7 +57,7 @@ MeshData OBJLoader::LoadOBJ(const char* objFile)
 		if (chars[0] == 'v' && chars[1] == 'n')
 		{
 			// Read the 3 numbers directly into an XMFLOAT3
-			XMFLOAT3 norm;
+			XMFLOAT3 norm{};
 			sscanf_s(
 				chars,
 				"vn %f %f %f",
@@ -67,7 +69,7 @@ MeshData OBJLoader::LoadOBJ(const char* objFile)
 		else if (chars[0] == 'v' && chars[1] == 't')
 		{
 			// Read the 2 numbers directly into an XMFLOAT2
-			XMFLOAT2 uv;
+			XMFLOAT2 uv{};
 			sscanf_s(
 				chars,
 				"vt %f %f",
@@ -79,7 +81,7 @@ MeshData OBJLoader::LoadOBJ(const char* objFile)
 		else if (chars[0] == 'v')
 		{
 			// Read the 3 numbers directly into an XMFLOAT3
-			XMFLOAT3 pos;
+			XMFLOAT3 pos{};
 			sscanf_s(
 				chars,
 				"v %f %f %f",
@@ -93,7 +95,7 @@ MeshData OBJLoader::LoadOBJ(const char* objFile)
 			// Read the face indices into an array
 			// NOTE: This assumes the given obj file contains
 			//  vertex positions, uv coordinates AND normals.
-			unsigned int i[12];
+			unsigned int i[12]{};
 			int numbersRead = sscanf_s(
 				chars,
 				"f %d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d",
@@ -135,29 +137,29 @@ MeshData OBJLoader::LoadOBJ(const char* objFile)
 			//    corresponding data from vectors
 			// - OBJ File indices are 1-based, so
 			//    they need to be adusted
-			Vertex v1;
-			v1.Position = positions[i[0] - 1];
-			v1.UV = uvs[i[1] - 1];
-			v1.Normal = normals[i[2] - 1];
+			Vertex v1{};
+			v1.Position = positions[max(i[0] - 1, 0)];
+			v1.UV = uvs[max(i[1] - 1, 0)];
+			v1.Normal = normals[max(i[2] - 1, 0)];
 
-			Vertex v2;
-			v2.Position = positions[i[3] - 1];
-			v2.UV = uvs[i[4] - 1];
-			v2.Normal = normals[i[5] - 1];
+			Vertex v2{};
+			v2.Position = positions[max(i[3] - 1, 0)];
+			v2.UV = uvs[max(i[4] - 1, 0)];
+			v2.Normal = normals[max(i[5] - 1, 0)];
 
-			Vertex v3;
-			v3.Position = positions[i[6] - 1];
-			v3.UV = uvs[i[7] - 1];
-			v3.Normal = normals[i[8] - 1];
+			Vertex v3{};
+			v3.Position = positions[max(i[6] - 1, 0)];
+			v3.UV = uvs[max(i[7] - 1, 0)];
+			v3.Normal = normals[max(i[8] - 1, 0)];
 
 			// The model is most likely in a right-handed space,
-			// especially if it came from Maya.  We want to convert
-			// to a left-handed space for DirectX.  This means we 
+			// especially if it came from Maya.  We probably want 
+			// to convert to a left-handed space.  This means we 
 			// need to:
 			//  - Invert the Z position
 			//  - Invert the normal's Z
 			//  - Flip the winding order
-			// We also need to flip the UV coordinate since DirectX
+			// We also need to flip the UV coordinate since Direct3D
 			// defines (0,0) as the top left of the texture, and many
 			// 3D modeling packages use the bottom left as (0,0)
 
@@ -177,15 +179,9 @@ MeshData OBJLoader::LoadOBJ(const char* objFile)
 			v3.Normal.z *= -1.0f;
 
 			// Add the verts to the vector (flipping the winding order)
-			verts.push_back(v1);
-			verts.push_back(v3);
-			verts.push_back(v2);
-			vertCounter += 3;
-
-			// Add three more indices
-			indices.push_back(indexCounter); indexCounter += 1;
-			indices.push_back(indexCounter); indexCounter += 1;
-			indices.push_back(indexCounter); indexCounter += 1;
+			vertsFromFile.push_back(v1);
+			vertsFromFile.push_back(v3);
+			vertsFromFile.push_back(v2);
 
 			// Was there a 4th face?
 			// - 12 numbers read means 4 faces WITH uv's
@@ -193,10 +189,10 @@ MeshData OBJLoader::LoadOBJ(const char* objFile)
 			if (numbersRead == 12 || numbersRead == 8)
 			{
 				// Make the last vertex
-				Vertex v4;
-				v4.Position = positions[i[9] - 1];
-				v4.UV = uvs[i[10] - 1];
-				v4.Normal = normals[i[11] - 1];
+				Vertex v4{};
+				v4.Position = positions[max(i[9] - 1, 0)];
+				v4.UV = uvs[max(i[10] - 1, 0)];
+				v4.Normal = normals[max(i[11] - 1, 0)];
 
 				// Flip the UV, Z pos and normal's Z
 				v4.UV.y = 1.0f - v4.UV.y;
@@ -204,17 +200,53 @@ MeshData OBJLoader::LoadOBJ(const char* objFile)
 				v4.Normal.z *= -1.0f;
 
 				// Add a whole triangle (flipping the winding order)
-				verts.push_back(v1);
-				verts.push_back(v4);
-				verts.push_back(v3);
-				vertCounter += 3;
-
-				// Add three more indices
-				indices.push_back(indexCounter); indexCounter += 1;
-				indices.push_back(indexCounter); indexCounter += 1;
-				indices.push_back(indexCounter); indexCounter += 1;
+				vertsFromFile.push_back(v1);
+				vertsFromFile.push_back(v4);
+				vertsFromFile.push_back(v3);
 			}
 		}
+	}
+
+	// We'll use hash table (unordered_map) to determine
+	// if any of the vertices are duplicates
+	std::unordered_map<std::string, unsigned int> vertMap;
+	for (auto& v : vertsFromFile)
+	{
+		// Create a "unique" representation of the vertex (its key)
+		// Note: This isn't a super efficient method, but since strings
+		//       inherently work with unordered_maps, this saves
+		//       us from having to write our own custom hash function
+		std::string vStr =
+			std::to_string(v.Position.x) +
+			std::to_string(v.Position.y) +
+			std::to_string(v.Position.z) +
+			std::to_string(v.Normal.x) +
+			std::to_string(v.Normal.y) +
+			std::to_string(v.Normal.z) +
+			std::to_string(v.UV.x) +
+			std::to_string(v.UV.y);
+
+		// Prepare the index for this vertex and
+		// search for the vertex in the hash table
+		unsigned int index = -1;
+		auto pair = vertMap.find(vStr);
+		if (pair == vertMap.end())
+		{
+			// Vertex not found, so this
+			// is the first time we've seen it
+			index = (unsigned int)finalVertices.size();
+			finalVertices.push_back(v);
+			vertMap.insert({ vStr, index });
+		}
+		else
+		{
+			// Vert already exists, just
+			// grab its index
+			index = pair->second;
+		}
+
+		// Either way, save the index
+		finalIndices.push_back(index);
 	}
 
 	// Close the file and create the actual buffers
@@ -227,8 +259,8 @@ MeshData OBJLoader::LoadOBJ(const char* objFile)
 	//std::memcpy(&meshData.normals, &normals, sizeof(normals));
 	//std::memcpy(&meshData.uvs, &uvs, sizeof(uvs));
 	meshData.positions = positions;
-	meshData.indices = indices;
-	meshData.vertices = verts;
+	meshData.indices = finalIndices;
+	meshData.vertices = finalVertices;
 	meshData.normals = normals;
 	meshData.uvs = uvs;
 

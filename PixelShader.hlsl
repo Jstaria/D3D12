@@ -7,7 +7,7 @@
 struct VertexToPixel
 {
     float4 screenPosition : SV_POSITION;
-    //float2 uv : TEXCOORD;
+    float2 uv : TEXCOORD;
     //float3 normal : NORMAL;
     //float3 tangent : TANGENT;
     //float3 worldPosition : POSITION;
@@ -29,5 +29,5 @@ float4 main(VertexToPixel input) : SV_TARGET
 	// - This color (like most values passing through the rasterizer) is 
 	//   interpolated for each pixel between the corresponding vertices 
 	//   of the triangle we're rendering
-    return float4(1,1,1,1);
+    return float4(input.uv,0,1);
 }

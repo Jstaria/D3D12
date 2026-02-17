@@ -10,7 +10,7 @@ struct VertexShaderInput
 struct VertexToPixel
 {
     float4 screenPosition : SV_POSITION;
-    //float2 uv : TEXCOORD;
+    float2 uv : TEXCOORD;
     //float3 normal : NORMAL;
     //float3 tangent : TANGENT;
     //float3 worldPosition : POSITION;
@@ -30,10 +30,6 @@ cbuffer camData : register(b0)
     ExternalData data;
 }
 
-//cbuffer buffer : register(b0)
-//{
-//    float3 data;
-//}
 
 // --------------------------------------------------------
 // The entry point (main method) for our vertex shader
@@ -51,7 +47,7 @@ VertexToPixel main(VertexShaderInput input)
 	
     //output.worldPosition = mul(data.worldMatrix, float4(input.localPosition, 1.0f)).xyz;
     output.screenPosition = mul(wvp, float4(input.localPosition, 1.0f));
-    //output.uv = input.uv;
+    output.uv = input.uv;
     //output.normal = normalize(mul((float3x3) data.invWorldMatrix, input.normal));
     //output.tangent = normalize(mul((float3x3) data.invWorldMatrix, input.tangent));
     

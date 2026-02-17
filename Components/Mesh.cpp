@@ -73,15 +73,15 @@ void Mesh::InitializeMesh(MeshData meshD)
 void Mesh::CreateMesh(MeshData& meshData)
 {
 	// Create the two buffers
-	vertexBuffer = Graphics::CreateStaticBuffer(sizeof(Vertex), meshData.vertices.size(), &meshData.vertices);
-	indexBuffer = Graphics::CreateStaticBuffer(sizeof(unsigned int), meshData.indices.size(), &meshData.indices);
+	vertexBuffer = Graphics::CreateStaticBuffer(sizeof(Vertex), meshData.vertices.size(), &meshData.vertices[0]);
+	indexBuffer = Graphics::CreateStaticBuffer(sizeof(unsigned int), meshData.indices.size(), &meshData.indices[0]);
 
 	// Set up the views
 	vbView.StrideInBytes = sizeof(Vertex);
-	vbView.SizeInBytes = sizeof(Vertex) * meshData.vertices.size();
+	vbView.SizeInBytes = (UINT)(sizeof(Vertex) * meshData.vertices.size());
 	vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
 	ibView.Format = DXGI_FORMAT_R32_UINT;
-	ibView.SizeInBytes = sizeof(unsigned int) * meshData.indices.size();
+	ibView.SizeInBytes = (UINT)(sizeof(unsigned int) * meshData.indices.size());
 	ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
 }
 

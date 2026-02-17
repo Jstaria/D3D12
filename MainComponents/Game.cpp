@@ -180,7 +180,7 @@ void Game::CreateRootSigAndPipelineState()
 
 		// -- States ---
 		psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 		psoDesc.RasterizerState.DepthClipEnable = true;
 		psoDesc.DepthStencilState.DepthEnable = true;
 		psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
@@ -231,11 +231,17 @@ void Game::CreateRootSigAndPipelineState()
 // --------------------------------------------------------
 void Game::CreateGeometry()
 {
-	camera = std::make_shared<FPSCamera>("MainCamera", XMFLOAT3(0, 0, -10.0f), 5.0f, .002f, 80, Window::AspectRatio(), 0.01f, 1000.0f);
+	camera = std::make_shared<FPSCamera>("MainCamera", XMFLOAT3(0, 0, -5.0f), 5.0f, .002f, 80, Window::AspectRatio(), 0.01f, 1000.0f);
 
-	std::shared_ptr<Mesh> cube = std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/cube.obj").c_str());
+	drawables.push_back(std::make_shared<Mesh>("Torus", FixPath("../../Assets/Meshes/torus.obj").c_str()));
+	drawables.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/crate_wood.obj").c_str()));
+	drawables.push_back(std::make_shared<Mesh>("Helix", FixPath("../../Assets/Meshes/helix.obj").c_str()));
 
-	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Cube", cube, nullptr, nullptr)));
+	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Torus", drawables[0], nullptr, nullptr)));
+	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Cube", drawables[1], nullptr, nullptr)));
+	gameObjs[1]->GetTransform()->SetPosition(-3, 0, 0);
+	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Helix", drawables[2], nullptr, nullptr)));
+	gameObjs[2]->GetTransform()->SetPosition(3, 0, 0);
 }
 
 // --------------------------------------------------------
@@ -332,27 +338,26 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Root sig (must happen before root descriptor table)
 		Graphics::CommandList->SetGraphicsRootSignature(rootSignature.Get());
 
-		//XMFLOAT3 data(sin(totalTime), 0, 0);
-
-		
-
-
-		//Graphics::CommandList->SetGraphicsRoot32BitConstants(0, 3, &data, 0);
-
 		// Set up other commands for rendering
+		Graphics::CommandList->SetDescriptorHeaps(1, Graphics::CBVSRVDescriptorHeap.GetAddressOf());
+
 		Graphics::CommandList->OMSetRenderTargets(
 			1, &Graphics::RTVHandles[Graphics::SwapChainIndex()], true, &Graphics::DSVHandle);
 
-		Graphics::CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 		Graphics::CommandList->RSSetViewports(1, &viewport);
 		Graphics::CommandList->RSSetScissorRects(1, &scissorRect);
-		Graphics::CommandList->SetDescriptorHeaps(1, Graphics::CBVSRVDescriptorHeap.GetAddressOf());
+		
+		Graphics::CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		for (auto& g : gameObjs) {
-			ExternalData camData{};
-			camData.viewMatrix = camera->GetView();
-			camData.projMatrix = camera->GetProjection();
+		XMFLOAT3 fwd = camera->GetTransform()->GetForward();
+		printf("Camera Fwd: %f %f %f\n", fwd.x, fwd.y, fwd.z);
+
+		ExternalData camData{};
+		camData.viewMatrix = camera->GetView();
+		camData.projMatrix = camera->GetProjection();
+
+		for (auto& g : gameObjs) 
+		{
 			camData.worldMatrix = g->GetTransform()->GetWorldMatrix();
 
 			D3D12_GPU_DESCRIPTOR_HANDLE handle = Graphics::FillNextConstBufAndGetGPUDescHan((void*)(&camData), sizeof(ExternalData));
