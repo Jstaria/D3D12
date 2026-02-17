@@ -217,7 +217,7 @@ HRESULT Graphics::Initialize(unsigned int windowWidth, unsigned int windowHeight
 
 	{
 		cbvDescriptorOffset = 0;
-		cbUploadHeapSizeInBytes = (UINT64)maxConstantBuffers * 256;
+		cbUploadHeapSizeInBytes = (UINT64)MaxConstantBuffers * 256;
 		cbUploadHeapOffsetInBytes = 0;
 		cbvSrvDescriptorHeapIncrementSize = 
 			(SIZE_T)Device->GetDescriptorHandleIncrementSize(
@@ -685,7 +685,7 @@ D3D12_GPU_DESCRIPTOR_HANDLE Graphics::FillNextConstBufAndGetGPUDescHan(
 
 		// Increment the offset and loop back to the beginning if necessary
 		// which allows us to treat the descriptor heap as a ring buffer
-		cbvDescriptorOffset = (cbvDescriptorOffset + 1) % maxConstantBuffers;
+		cbvDescriptorOffset = (cbvDescriptorOffset + 1) % MaxConstantBuffers;
 
 		// Now that the CBV is ready, we return the GPU handle to it
 		// so it can be set as part of the root signature during drawing

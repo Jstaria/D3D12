@@ -22,7 +22,7 @@ Game::Game()
 	// Helper methods for loading shaders, creating some basic
 	// geometry to draw and some simple camera matrices.
 	//  - You'll be expanding and/or replacing these later
-	CreateGeometry();
+	Initialize();
 	CreateRootSigAndPipelineState();
 }
 
@@ -120,7 +120,7 @@ void Game::CreateRootSigAndPipelineState()
 
 		// Describe the overall the root signature
 		D3D12_ROOT_SIGNATURE_DESC rootSig = {};
-		rootSig.Flags = 
+		rootSig.Flags =
 			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
 			D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED;
 		rootSig.NumParameters = ARRAYSIZE(rootParams);
@@ -229,8 +229,18 @@ void Game::CreateRootSigAndPipelineState()
 // --------------------------------------------------------
 // Creates the geometry we're going to draw
 // --------------------------------------------------------
-void Game::CreateGeometry()
+void Game::Initialize()
 {
+
+	std::unordered_map<TextureID, unsigned int> rockMap = {
+		{TextureID::ALBEDO, 1 },
+		{TextureID::NORMAL_MAP, 1 },
+		{TextureID::METALNESS, 1 },
+		{TextureID::ROUGHNESS, 1 },
+	};
+
+	materials.push_back(std::make_shared<Material>("Rock", rockMap, XMFLOAT4(1,1,1,1) ));
+
 	camera = std::make_shared<FPSCamera>("MainCamera", XMFLOAT3(0, 0, -5.0f), 5.0f, .002f, 80, Window::AspectRatio(), 0.01f, 1000.0f);
 
 	drawables.push_back(std::make_shared<Mesh>("Torus", FixPath("../../Assets/Meshes/torus.obj").c_str()));
@@ -346,7 +356,7 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		Graphics::CommandList->RSSetViewports(1, &viewport);
 		Graphics::CommandList->RSSetScissorRects(1, &scissorRect);
-		
+
 		Graphics::CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		XMFLOAT3 fwd = camera->GetTransform()->GetForward();
@@ -356,7 +366,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		camData.viewMatrix = camera->GetView();
 		camData.projMatrix = camera->GetProjection();
 
-		for (auto& g : gameObjs) 
+		for (auto& g : gameObjs)
 		{
 			camData.worldMatrix = g->GetTransform()->GetWorldMatrix();
 
