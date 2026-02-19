@@ -22,8 +22,8 @@ Game::Game()
 	// Helper methods for loading shaders, creating some basic
 	// geometry to draw and some simple camera matrices.
 	//  - You'll be expanding and/or replacing these later
-	Initialize();
 	CreateRootSigAndPipelineState();
+	Initialize();	
 }
 
 // --------------------------------------------------------
@@ -94,6 +94,13 @@ void Game::CreateRootSigAndPipelineState()
 		cbvTable.RegisterSpace = 0;
 		cbvTable.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
+		D3D12_DESCRIPTOR_RANGE cbvTableP = {};
+		cbvTableP.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		cbvTableP.NumDescriptors = 1;
+		cbvTableP.BaseShaderRegister = 0;
+		cbvTableP.RegisterSpace = 0;
+		cbvTableP.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
 		// Create a single static sampler (available to all pixel shaders)
 		D3D12_STATIC_SAMPLER_DESC anisoWrap = {};
 		anisoWrap.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -116,7 +123,7 @@ void Game::CreateRootSigAndPipelineState()
 		rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
-		rootParams[1].DescriptorTable.pDescriptorRanges = &cbvTable;
+		rootParams[1].DescriptorTable.pDescriptorRanges = &cbvTableP;
 
 		// Describe the overall the root signature
 		D3D12_ROOT_SIGNATURE_DESC rootSig = {};
@@ -180,16 +187,17 @@ void Game::CreateRootSigAndPipelineState()
 
 		// -- States ---
 		psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 		psoDesc.RasterizerState.DepthClipEnable = true;
+
 		psoDesc.DepthStencilState.DepthEnable = true;
 		psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
 		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+
 		psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_ONE;
 		psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_ZERO;
 		psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-		psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask =
-			D3D12_COLOR_WRITE_ENABLE_ALL;
+		psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
 		// -- Misc ---
 		psoDesc.SampleMask = 0xffffffff;
@@ -231,15 +239,48 @@ void Game::CreateRootSigAndPipelineState()
 // --------------------------------------------------------
 void Game::Initialize()
 {
+	std::wstring AssetPath = L"../../Assets/";
 
-	std::unordered_map<TextureID, unsigned int> rockMap = {
-		{TextureID::ALBEDO, 1 },
-		{TextureID::NORMAL_MAP, 1 },
-		{TextureID::METALNESS, 1 },
-		{TextureID::ROUGHNESS, 1 },
+	// Load textures
+	unsigned int cobblestoneAlbedo = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/cobblestone_albedo.png").c_str());
+	unsigned int cobblestoneNormals = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/cobblestone_normals.png").c_str());
+	unsigned int cobblestoneRoughness = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/cobblestone_roughness.png").c_str());
+	unsigned int cobblestoneMetal = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/cobblestone_metal.png").c_str());
+
+	std::unordered_map<TextureID, unsigned int> cobbleMap = {
+	{TextureID::ALBEDO, cobblestoneAlbedo },
+	{TextureID::NORMAL_MAP, cobblestoneAlbedo },
+	{TextureID::METALNESS, cobblestoneRoughness },
+	{TextureID::ROUGHNESS, cobblestoneMetal },
 	};
 
-	materials.push_back(std::make_shared<Material>("Rock", rockMap, XMFLOAT4(1,1,1,1) ));
+	unsigned int bronzeAlbedo = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/bronze_albedo.png").c_str());
+	unsigned int bronzeNormals = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/bronze_normals.png").c_str());
+	unsigned int bronzeRoughness = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/bronze_roughness.png").c_str());
+	unsigned int bronzeMetal = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/bronze_metal.png").c_str());
+
+	std::unordered_map<TextureID, unsigned int> bronzeMap = {
+	{TextureID::ALBEDO, bronzeAlbedo },
+	{TextureID::NORMAL_MAP, bronzeNormals },
+	{TextureID::METALNESS, bronzeRoughness },
+	{TextureID::ROUGHNESS, bronzeMetal },
+	};
+
+	unsigned int scratchedAlbedo = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/scratched_albedo.png").c_str());
+	unsigned int scratchedNormals = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/scratched_normals.png").c_str());
+	unsigned int scratchedRoughness = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/scratched_roughness.png").c_str());
+	unsigned int scratchedMetal = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/scratched_metal.png").c_str());
+
+	std::unordered_map<TextureID, unsigned int> scratchedMap = {
+	{TextureID::ALBEDO, scratchedAlbedo },
+	{TextureID::NORMAL_MAP, scratchedNormals },
+	{TextureID::METALNESS, scratchedRoughness },
+	{TextureID::ROUGHNESS, scratchedMetal },
+	};
+
+	std::shared_ptr<Material> cobbleMat = std::make_shared<Material>("cobble", cobbleMap, pipelineState, XMFLOAT4(1, 1, 1, 1));
+	std::shared_ptr<Material> bronzeMat = std::make_shared<Material>("bronze", bronzeMap, pipelineState, XMFLOAT4(1, 1, 1, 1));
+	std::shared_ptr<Material> scratchedMat = std::make_shared<Material>("scratched", scratchedMap, pipelineState, XMFLOAT4(1, 1, 1, 1));
 
 	camera = std::make_shared<FPSCamera>("MainCamera", XMFLOAT3(0, 0, -5.0f), 5.0f, .002f, 80, Window::AspectRatio(), 0.01f, 1000.0f);
 
@@ -247,10 +288,10 @@ void Game::Initialize()
 	drawables.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/crate_wood.obj").c_str()));
 	drawables.push_back(std::make_shared<Mesh>("Helix", FixPath("../../Assets/Meshes/helix.obj").c_str()));
 
-	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Torus", drawables[0], nullptr, nullptr)));
-	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Cube", drawables[1], nullptr, nullptr)));
+	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Torus", drawables[0], nullptr, bronzeMat)));
+	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Cube", drawables[1], nullptr, cobbleMat)));
 	gameObjs[1]->GetTransform()->SetPosition(-3, 0, 0);
-	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Helix", drawables[2], nullptr, nullptr)));
+	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Helix", drawables[2], nullptr, scratchedMat)));
 	gameObjs[2]->GetTransform()->SetPosition(3, 0, 0);
 }
 

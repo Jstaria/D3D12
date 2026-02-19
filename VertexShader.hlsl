@@ -11,10 +11,10 @@ struct VertexToPixel
 {
     float4 screenPosition : SV_POSITION;
     float2 uv : TEXCOORD;
-    //float3 normal : NORMAL;
-    //float3 tangent : TANGENT;
-    //float3 worldPosition : POSITION;
-    //float4 shadowMapPos : SHADOW_POSITION;
+    float3 normal : NORMAL;
+    float3 tangent : TANGENT;
+    float3 worldPosition : POSITION;
+   // float4 shadowMapPos : SHADOW_POSITION;
 };
 
 struct ExternalData
@@ -22,13 +22,19 @@ struct ExternalData
     float4x4 viewMatrix;
     float4x4 projMatrix;
     float4x4 worldMatrix;
-    //float4x4 invWorldMatrix;
+    float4x4 invWorldMatrix;
 };
 
 cbuffer camData : register(b0)
 {
     ExternalData data;
 }
+
+//cbuffer lightData : register(b1)
+//{
+//    float4x4 lightProjection;
+//    float4x4 lightView;
+//}
 
 
 // --------------------------------------------------------
@@ -45,14 +51,14 @@ VertexToPixel main(VertexShaderInput input)
 
     float4x4 wvp = mul(data.projMatrix, mul(data.viewMatrix, data.worldMatrix));
 	
-    //output.worldPosition = mul(data.worldMatrix, float4(input.localPosition, 1.0f)).xyz;
+    output.worldPosition = mul(data.worldMatrix, float4(input.localPosition, 1.0f)).xyz;
     output.screenPosition = mul(wvp, float4(input.localPosition, 1.0f));
     output.uv = input.uv;
-    //output.normal = normalize(mul((float3x3) data.invWorldMatrix, input.normal));
-    //output.tangent = normalize(mul((float3x3) data.invWorldMatrix, input.tangent));
+    output.normal = normalize(mul((float3x3) data.invWorldMatrix, input.normal));
+    output.tangent = normalize(mul((float3x3) data.invWorldMatrix, input.tangent));
     
     //matrix shadowWVP = mul(lightProjection, mul(lightView, data.worldMatrix));
-    //output.shadowMapPos = mul(shadowWVP, float4(input.localPosition, 1.0f));
+   // output.shadowMapPos = mul(shadowWVP, float4(input.localPosition, 1.0f));
     
     return output;
 }

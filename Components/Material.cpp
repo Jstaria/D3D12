@@ -3,8 +3,8 @@
 
 using namespace Microsoft::WRL;
 
-Material::Material(const char* name, std::unordered_map<TextureID, unsigned int> textures, DirectX::XMFLOAT4 color)
-	: name(name), textures(textures), colorTint(color), uvScale(1, 1), uvOffset(0, 0), ambientTint(0.05f, 0.05f, 0.05f)
+Material::Material(const char* name, std::unordered_map<TextureID, unsigned int> textures, Microsoft::WRL::ComPtr<ID3D12PipelineState> PS, DirectX::XMFLOAT4 color)
+	: name(name), PS(PS), textures(textures), colorTint(color), uvScale(1, 1), uvOffset(0, 0), ambientTint(0.05f, 0.05f, 0.05f)
 {
 	materialIndex = 0;
 }
@@ -20,6 +20,19 @@ const char* Material::GetName() { return name; }
 
 unsigned int Material::GetTextureID(TextureID id) { return textures[id]; }
 unsigned int Material::GetMatIndex() { return materialIndex; }
+
+Microsoft::WRL::ComPtr<ID3D12PipelineState> Material::GetPipelineState() { return PS; }
+
+PixelData Material::GetPixelData()
+{
+	PixelData pData{};
+	pData.albedo = textures[ALBEDO];
+	pData.normalMap = textures[NORMAL_MAP];
+	pData.metalness = textures[METALNESS];
+	pData.roughness = textures[ROUGHNESS];
+
+	return pData;
+}
 
 void Material::AddTextureSRV(TextureID textureID, unsigned int id) { textures.insert({ textureID, id }); }
 void Material::SetAmbientTint(DirectX::XMFLOAT3 ambient) { this->ambientTint = ambient; }

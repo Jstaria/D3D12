@@ -8,6 +8,7 @@
 //#include "../ImGui/imgui.h"
 //#include "../Helper/SimpleShader.h"
 //#include "../Helper/GlobalVar.h"
+#include "../Structures/PixelData.h"
 #include "../MainComponents/Window.h"
 #include "../Components/Transform.h"
 #include "../Structures/ExternalData.h"
@@ -24,7 +25,7 @@ enum TextureID {
 class Material
 {
 private:
-	std::shared_ptr<ID3D12PipelineState> PS;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> PS;
 	DirectX::XMFLOAT4 colorTint;
 	DirectX::XMFLOAT3 ambientTint;
 	const char* name;
@@ -38,7 +39,7 @@ private:
 	//std::unordered_map<const char*, Microsoft::WRL::ComPtr<ID3D11SamplerState>> samplers;
 
 public:
-	Material(const char* name, std::unordered_map<TextureID, unsigned int> textures, DirectX::XMFLOAT4 color);
+	Material(const char* name, std::unordered_map<TextureID, unsigned int> textures, Microsoft::WRL::ComPtr<ID3D12PipelineState> PS, DirectX::XMFLOAT4 color);
 
 	void SetDefaultShaderParam(ExternalData data, Transform* transform, Transform* camTransform);
 
@@ -48,6 +49,8 @@ public:
 	const char* GetName();
 	unsigned int GetTextureID(TextureID ID);
 	unsigned int GetMatIndex();
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> GetPipelineState();
+	PixelData GetPixelData();
 
 	// -=| Setters/Adders |=-
 	void AddTextureSRV(TextureID textureID, unsigned int id);

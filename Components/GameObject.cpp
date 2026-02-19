@@ -85,6 +85,14 @@ void GameObject::SetDrawable(std::shared_ptr<IDrawable> drawable) { this->drawab
 
 void GameObject::Draw()
 {
+	Graphics::CommandList->SetPipelineState(material->GetPipelineState().Get());
+	
+	PixelData psData = material->GetPixelData();
+
+	D3D12_GPU_DESCRIPTOR_HANDLE handle = Graphics::FillNextConstBufAndGetGPUDescHan((void*)(&psData), sizeof(PixelData));
+
+	Graphics::CommandList->SetGraphicsRootDescriptorTable(1, handle);
+
 	drawable->Draw();
 }
 
