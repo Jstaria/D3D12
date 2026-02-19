@@ -173,7 +173,6 @@ struct Light
     float2 Padding; // Purposefully padding to hit the 16-byte boundary
 };
 
-Light lights[MAX_LIGHTS];
 
 float Attenuate(Light light, float3 worldPos)
 {

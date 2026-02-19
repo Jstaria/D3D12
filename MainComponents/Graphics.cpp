@@ -723,12 +723,9 @@ unsigned int Graphics::LoadTexture(const wchar_t* file, bool generateMips)
 	// to get a default SRV that can see all potential subresources of the texture.
 
 	D3D12_CPU_DESCRIPTOR_HANDLE handle = CBVSRVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	handle.ptr = srvIndex + Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	handle.ptr += srvIndex * Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	 Device->CreateShaderResourceView(
-		texture.Get(), 
-		nullptr,
-		handle);
+	Device->CreateShaderResourceView(texture.Get(), 0, handle);
 
 	// Send back the index of the descriptor
 	return srvIndex;

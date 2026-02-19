@@ -30,6 +30,8 @@ PixelData Material::GetPixelData()
 	pData.normalMap = textures[NORMAL_MAP];
 	pData.metalness = textures[METALNESS];
 	pData.roughness = textures[ROUGHNESS];
+	pData.uvScale = uvScale;
+	pData.uvOffset = uvOffset;
 
 	return pData;
 }

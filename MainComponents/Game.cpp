@@ -386,11 +386,11 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Set overall pipeline state
 		Graphics::CommandList->SetPipelineState(pipelineState.Get());
 
-		// Root sig (must happen before root descriptor table)
-		Graphics::CommandList->SetGraphicsRootSignature(rootSignature.Get());
-
 		// Set up other commands for rendering
 		Graphics::CommandList->SetDescriptorHeaps(1, Graphics::CBVSRVDescriptorHeap.GetAddressOf());
+
+		// Root sig (must happen before root descriptor table)
+		Graphics::CommandList->SetGraphicsRootSignature(rootSignature.Get());
 
 		Graphics::CommandList->OMSetRenderTargets(
 			1, &Graphics::RTVHandles[Graphics::SwapChainIndex()], true, &Graphics::DSVHandle);
@@ -401,7 +401,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		Graphics::CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		XMFLOAT3 fwd = camera->GetTransform()->GetForward();
-		printf("Camera Fwd: %f %f %f\n", fwd.x, fwd.y, fwd.z);
+		//printf("Camera Fwd: %f %f %f\n", fwd.x, fwd.y, fwd.z);
 
 		ExternalData camData{};
 		camData.viewMatrix = camera->GetView();
@@ -413,8 +413,17 @@ void Game::Draw(float deltaTime, float totalTime)
 
 			D3D12_GPU_DESCRIPTOR_HANDLE handle = Graphics::FillNextConstBufAndGetGPUDescHan((void*)(&camData), sizeof(ExternalData));
 			Graphics::CommandList->SetGraphicsRootDescriptorTable(0, handle);
+			
+			Graphics::CommandList->SetPipelineState(g->GetMaterial()->GetPipelineState().Get());
 
-			g->Draw();
+			PixelData psData = g->GetMaterial()->GetPixelData();
+			psData.cameraPosition = camera->GetTransform()->GetPosition();
+
+			handle = Graphics::FillNextConstBufAndGetGPUDescHan((void*)(&psData), sizeof(PixelData));
+
+			Graphics::CommandList->SetGraphicsRootDescriptorTable(1, handle);
+
+			g->GetDrawable()->Draw();
 		}
 	}
 

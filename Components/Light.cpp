@@ -56,53 +56,53 @@ bool Light::GetActive() { return isActive; }
 
 void Light::Draw()
 {
-	if (!isActive || lightStruct.Type == LIGHT_TYPE_DIRECTIONAL || !Debug::ShowLightsMesh) return;
+	//if (!isActive || lightStruct.Type == LIGHT_TYPE_DIRECTIONAL || !Debug::ShowLightsMesh) return;
 	
-	drawable->Draw();
+	//drawable->Draw();
 }
 
-void Light::DrawImGui()
-{
-	if (ImGui::TreeNode(name)) {
+//void Light::DrawImGui()
+//{
+//	if (ImGui::TreeNode(name)) {
+//
+//		if (parentObj != nullptr)
+//			ImGui::Text("Parent GameObject: %s", parentObj->GetName());
+//
+//		const std::string type = lightStruct.Type == 0 ? "Directional" : lightStruct.Type == 1 ? "Point" : "Spot";
+//
+//		ImGui::Text(("Light Type: " + type).c_str());
+//
+//		ImGui::Checkbox("Is Active", &isActive);
+//
+//		if (lightStruct.Type != LIGHT_TYPE_DIRECTIONAL) {
+//			DirectX::XMFLOAT3 pos = transform->GetPosition();
+//			ImGui::DragFloat3(("Position##" + std::string(name)).c_str(), &pos.x, .01f);
+//			lightStruct.Position = !canUpdate ? pos : lightStruct.Position;
+//			transform->SetPosition(pos);
+//
+//			ImGui::DragFloat(("Light Range##" + std::string(name)).c_str(), &lightStruct.Range, 0.01f, 100.0f);
+//		}
+//
+//		if (lightStruct.Type != LIGHT_TYPE_POINT) {
+//			DirectX::XMFLOAT3 dir = lightStruct.Direction;
+//			ImGui::DragFloat3(("Direction##" + std::string(name)).c_str(), &dir.x, .01f);
+//			lightStruct.Direction = dir;
+//		}
+//
+//		if (lightStruct.Type == LIGHT_TYPE_SPOT) {
+//			ImGui::DragFloat(("Inner Angle##" + std::string(name)).c_str(), &lightStruct.SpotInnerAngle, 0.1f, 0.01f, lightStruct.SpotOuterAngle - 0.01f);
+//			ImGui::DragFloat(("Outer Angle##" + std::string(name)).c_str(), &lightStruct.SpotOuterAngle, 0.1f, lightStruct.SpotInnerAngle + 0.01f, 3.14159f);
+//		}
+//
+//		ImGui::DragFloat(("Light Intensity##" + std::string(name)).c_str(), &lightStruct.Intensity, 0.1f, 0.1f, 5.0f);
+//		ImGui::ColorEdit3(("Tint##" + std::string(name)).c_str(), &lightStruct.Color.x);
+//		material->SetTint(DirectX::XMFLOAT4(lightStruct.Color.x, lightStruct.Color.y, lightStruct.Color.z, 1));
+//
+//		ImGui::TreePop();
+//	}
+//}
 
-		if (parentObj != nullptr)
-			ImGui::Text("Parent GameObject: %s", parentObj->GetName());
-
-		const std::string type = lightStruct.Type == 0 ? "Directional" : lightStruct.Type == 1 ? "Point" : "Spot";
-
-		ImGui::Text(("Light Type: " + type).c_str());
-
-		ImGui::Checkbox("Is Active", &isActive);
-
-		if (lightStruct.Type != LIGHT_TYPE_DIRECTIONAL) {
-			DirectX::XMFLOAT3 pos = transform->GetPosition();
-			ImGui::DragFloat3(("Position##" + std::string(name)).c_str(), &pos.x, .01f);
-			lightStruct.Position = !canUpdate ? pos : lightStruct.Position;
-			transform->SetPosition(pos);
-
-			ImGui::DragFloat(("Light Range##" + std::string(name)).c_str(), &lightStruct.Range, 0.01f, 100.0f);
-		}
-
-		if (lightStruct.Type != LIGHT_TYPE_POINT) {
-			DirectX::XMFLOAT3 dir = lightStruct.Direction;
-			ImGui::DragFloat3(("Direction##" + std::string(name)).c_str(), &dir.x, .01f);
-			lightStruct.Direction = dir;
-		}
-
-		if (lightStruct.Type == LIGHT_TYPE_SPOT) {
-			ImGui::DragFloat(("Inner Angle##" + std::string(name)).c_str(), &lightStruct.SpotInnerAngle, 0.1f, 0.01f, lightStruct.SpotOuterAngle - 0.01f);
-			ImGui::DragFloat(("Outer Angle##" + std::string(name)).c_str(), &lightStruct.SpotOuterAngle, 0.1f, lightStruct.SpotInnerAngle + 0.01f, 3.14159f);
-		}
-
-		ImGui::DragFloat(("Light Intensity##" + std::string(name)).c_str(), &lightStruct.Intensity, 0.1f, 0.1f, 5.0f);
-		ImGui::ColorEdit3(("Tint##" + std::string(name)).c_str(), &lightStruct.Color.x);
-		material->SetTint(DirectX::XMFLOAT4(lightStruct.Color.x, lightStruct.Color.y, lightStruct.Color.z, 1));
-
-		ImGui::TreePop();
-	}
-}
-
-void Light::FixedUpdate(float deltaTime)
+void Light::Update(float deltaTime)
 {
 	if (!canUpdate || !isActive) return;
 

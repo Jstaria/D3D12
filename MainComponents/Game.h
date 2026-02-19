@@ -9,6 +9,7 @@
 
 #include "../Components/GameObject.h"
 #include "../Components/FPSCamera.h"
+#include "../Components/Light.h"
 
 #include "../Helper/OBJLoader.h"
 #include "../Helper/PathHelpers.h"
@@ -56,6 +57,7 @@ private:
 	std::vector<std::shared_ptr<Material>> materials;
 	std::vector<std::shared_ptr<IDrawable>> drawables;
 	std::vector<std::shared_ptr<GameObject>> gameObjs;
+	std::vector<std::shared_ptr<Light>> lights;
 	std::shared_ptr<FPSCamera> camera;
 
 

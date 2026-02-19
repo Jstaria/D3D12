@@ -24,6 +24,7 @@ protected:
 	std::shared_ptr<GameObject> parentObj;
 	std::vector<GameObject*> childObjs;
 	DirectX::XMFLOAT4 tint;
+	DirectX::XMFLOAT3 camPos;
 
 public:
 	GameObject(const char* name, std::shared_ptr<IDrawable> drawable, std::shared_ptr<GameObject> parentObj, std::shared_ptr<Material> material);
@@ -41,8 +42,9 @@ public:
 	void SetTint(DirectX::XMFLOAT4 tintColor);
 	void SetMaterial(std::shared_ptr<Material> material) override;
 	void SetDrawable(std::shared_ptr<IDrawable> drawable) override;
+	void SetCamPos(DirectX::XMFLOAT3 camPos);
 
-	void DrawImGui(std::map<const char*, std::shared_ptr<Material>> materials, std::vector<const char*> materialKeys);
+	//void DrawImGui(std::map<const char*, std::shared_ptr<Material>> materials, std::vector<const char*> materialKeys);
 
 	// Inherited via IRenderable
 	void Draw() override;

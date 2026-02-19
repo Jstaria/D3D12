@@ -6,6 +6,7 @@
 #include <string>
 #include <wrl/client.h>
 #include <vector>
+
 #include "WICTextureLoader.h"
 #include "ResourceUploadBatch.h"
 
@@ -87,7 +88,7 @@ namespace Graphics
 	void AdvanceSwapChainIndex();
 
 	// Resouce Creation
-	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStatucBuffer(size_t dataStrict);
+	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStaticBuffer(size_t dataStride, size_t dataCount, void* data);
 
 	// Debug Layer
 	void PrintDebugMessages();

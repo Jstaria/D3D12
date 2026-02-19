@@ -1,5 +1,5 @@
 #pragma once
-#include <d3d12.h>
+#include <DirectXMath.h>
 
 struct PixelData {
 	unsigned int albedo;
@@ -11,5 +11,4 @@ struct PixelData {
 	DirectX::XMFLOAT2 uvScale;
 	DirectX::XMFLOAT2 uvOffset;
 	DirectX::XMFLOAT3 cameraPosition;
-	//int lightCount;
-};
+	//int lightCount;};
