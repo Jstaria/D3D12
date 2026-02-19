@@ -32,6 +32,7 @@ private:
 
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
 	void CreateRootSigAndPipelineState();
+	void CreateGeometry();
 	void Initialize();
 
 	// Note the usage of ComPtr below

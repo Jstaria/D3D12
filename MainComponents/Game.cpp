@@ -23,6 +23,7 @@ Game::Game()
 	// geometry to draw and some simple camera matrices.
 	//  - You'll be expanding and/or replacing these later
 	CreateRootSigAndPipelineState();
+	CreateGeometry();
 	Initialize();	
 }
 
@@ -234,10 +235,7 @@ void Game::CreateRootSigAndPipelineState()
 	}
 }
 
-// --------------------------------------------------------
-// Creates the geometry we're going to draw
-// --------------------------------------------------------
-void Game::Initialize()
+void Game::CreateGeometry()
 {
 	std::wstring AssetPath = L"../../Assets/";
 
@@ -278,20 +276,29 @@ void Game::Initialize()
 	{TextureID::ROUGHNESS, scratchedMetal },
 	};
 
-	std::shared_ptr<Material> cobbleMat = std::make_shared<Material>("cobble", cobbleMap, pipelineState, XMFLOAT4(1, 1, 1, 1));
-	std::shared_ptr<Material> bronzeMat = std::make_shared<Material>("bronze", bronzeMap, pipelineState, XMFLOAT4(1, 1, 1, 1));
-	std::shared_ptr<Material> scratchedMat = std::make_shared<Material>("scratched", scratchedMap, pipelineState, XMFLOAT4(1, 1, 1, 1));
-
-	camera = std::make_shared<FPSCamera>("MainCamera", XMFLOAT3(0, 0, -5.0f), 5.0f, .002f, 80, Window::AspectRatio(), 0.01f, 1000.0f);
+	materials.push_back(std::make_shared<Material>("cobble", cobbleMap, pipelineState, XMFLOAT4(1, 1, 1, 1)));
+	materials.push_back(std::make_shared<Material>("bronze", bronzeMap, pipelineState, XMFLOAT4(1, 1, 1, 1)));
+	materials.push_back(std::make_shared<Material>("scratched", scratchedMap, pipelineState, XMFLOAT4(1, 1, 1, 1)));
 
 	drawables.push_back(std::make_shared<Mesh>("Torus", FixPath("../../Assets/Meshes/torus.obj").c_str()));
 	drawables.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/crate_wood.obj").c_str()));
 	drawables.push_back(std::make_shared<Mesh>("Helix", FixPath("../../Assets/Meshes/helix.obj").c_str()));
 
-	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Torus", drawables[0], nullptr, bronzeMat)));
-	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Cube", drawables[1], nullptr, cobbleMat)));
+}
+
+// --------------------------------------------------------
+// Creates the geometry we're going to draw
+// --------------------------------------------------------
+void Game::Initialize()
+{
+	camera = std::make_shared<FPSCamera>("MainCamera", XMFLOAT3(0, 0, -5.0f), 5.0f, .002f, 80, Window::AspectRatio(), 0.01f, 1000.0f);
+
+	lights.push_back(std::make_shared<Light>("Directional Light", true, true, XMFLOAT3(1, 1, 1), XMFLOAT3(-1, -1, 1), 2));
+
+	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Torus", drawables[0], nullptr, materials[0])));
+	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Cube", drawables[1], nullptr, materials[1])));
 	gameObjs[1]->GetTransform()->SetPosition(-3, 0, 0);
-	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Helix", drawables[2], nullptr, scratchedMat)));
+	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Helix", drawables[2], nullptr, materials[2])));
 	gameObjs[2]->GetTransform()->SetPosition(3, 0, 0);
 }
 
@@ -418,6 +425,7 @@ void Game::Draw(float deltaTime, float totalTime)
 
 			PixelData psData = g->GetMaterial()->GetPixelData();
 			psData.cameraPosition = camera->GetTransform()->GetPosition();
+			memcpy(psData.lights, &lights[0], sizeof(lights));
 
 			handle = Graphics::FillNextConstBufAndGetGPUDescHan((void*)(&psData), sizeof(PixelData));
 
