@@ -1,58 +1,188 @@
-#ifndef __LIGHTING_INCLUDES__ 
-#define __LIGHTING_INCLUDES__
+// Include guard
+#ifndef __GGP_LIGHTING__
+#define __GGP_LIGHTING__
 
-#define MAX_SPECULAR_EXPONENT 256.0f
 #define MAX_LIGHTS 64
 
-#define LIGHT_TYPE_DIRECTIONAL 0
-#define LIGHT_TYPE_POINT 1
-#define LIGHT_TYPE_SPOT 2
+#define MAX_SPECULAR_EXPONENT 256.0f
 
-#define PI 3.1415926535897932384626433832795
-#define TAU 6.283185307179586476925286766559
-#define HALF_PI 1.5707963267948966192313216916398
+#define LIGHT_TYPE_DIRECTIONAL	0
+#define LIGHT_TYPE_POINT		1
+#define LIGHT_TYPE_SPOT			2
 
-struct VertexToPixel
+struct Light
 {
-    float4 screenPosition : SV_POSITION;
-    float2 uv : TEXCOORD;
-    float3 normal : NORMAL;
-    float3 tangent : TANGENT;
-    float3 worldPosition : POSITION;
-    //float4 shadowMapPos : SHADOW_POSITION;
+	int Type;
+	float3 Direction; // 16 bytes
+
+	float Range;
+	float3 Position; // 32 bytes
+
+	float Intensity;
+	float3 Color; // 48 bytes
+
+	float SpotFalloff;
+	float3 Padding; // 64 bytes
 };
 
-// RenderDoc for debugging
+// === UTILITY FUNCTIONS ============================================
 
-static const float F0_NON_METAL = 0.04f;
-
-// Need a minimum roughness for when spec distribution function denominator goes to zero
-#define MIN_ROUGHNESS 0.0000001 // 6 zeros after 
-#define TWO_PI PI * 2.0f
-#define QUARTER_PI PI / 4.0f
-
-
-
-
-// PBR FUNCTIONS ================
-
-// Lambert diffuse BRDF - Same as the basic lighting diffuse calculation!
-// - NOTE: this function assumes the vectors are already NORMALIZED!
-float DiffusePBR(float3 normal, float3 dirToLight)
+// Basic sample and unpack
+float3 SampleAndUnpackNormalMap(Texture2D map, SamplerState samp, float2 uv)
 {
-    return saturate(dot(normal, dirToLight));
+	return map.Sample(samp, uv).rgb * 2.0f - 1.0f;
+}
+
+// Handle converting tangent-space normal map to world space normal
+float3 NormalMapping(Texture2D map, SamplerState samp, float2 uv, float3 normal, float3 tangent)
+{
+	// Grab the normal from the map
+	float3 normalFromMap = SampleAndUnpackNormalMap(map, samp, uv);
+
+	// Gather the required vectors for converting the normal
+	float3 N = normal;
+	float3 T = normalize(tangent - N * dot(tangent, N));
+	float3 B = cross(T, N);
+
+	// Create the 3x3 matrix to convert from TANGENT-SPACE normals to WORLD-SPACE normals
+	float3x3 TBN = float3x3(T, B, N);
+
+	// Adjust the normal from the map and simply use the results
+	return normalize(mul(normalFromMap, TBN));
+}
+
+// Range-based attenuation function
+float Attenuate(Light light, float3 worldPos)
+{
+	float dist = distance(light.Position, worldPos);
+
+	// Ranged-based attenuation
+	float att = saturate(1.0f - (dist * dist / (light.Range * light.Range)));
+
+	// Soft falloff
+	return att * att;
 }
 
 
 
-// Calculates diffuse amount based on energy conservation
-//
-// diffuse   - Diffuse amount
-// F         - Fresnel result from microfacet BRDF
-// metalness - surface metalness amount 
-float3 DiffuseEnergyConserve(float3 diffuse, float3 F, float metalness)
+// === BASIC LIGHTING ===============================================
+
+// Lambert diffuse BRDF
+float Diffuse(float3 normal, float3 dirToLight)
 {
-    return diffuse * (1 - F) * (1 - metalness);
+	return saturate(dot(normal, dirToLight));
+}
+
+// Phong (specular) BRDF
+float SpecularPhong(float3 normal, float3 dirToLight, float3 toCamera, float roughness)
+{
+	// Calculate reflection vector
+	float3 refl = reflect(-dirToLight, normal);
+
+	// Compare reflection vector & view vector and raise to a power
+	return roughness == 1 ? 0.0f : pow(max(dot(toCamera, refl), 0), (1 - roughness) * MAX_SPECULAR_EXPONENT);
+}
+
+
+// Blinn-Phong (specular) BRDF
+float SpecularBlinnPhong(float3 normal, float3 dirToLight, float3 toCamera, float roughness)
+{
+	// Calculate halfway vector
+	float3 halfwayVector = normalize(dirToLight + toCamera);
+
+	// Compare halflway vector & normal and raise to a power
+	return roughness == 1 ? 0.0f : pow(max(dot(halfwayVector, normal), 0), (1 - roughness) * MAX_SPECULAR_EXPONENT);
+}
+
+
+
+
+// === LIGHT TYPES FOR BASIC LIGHTING ===============================
+
+
+float3 DirLight(Light light, float3 normal, float3 worldPos, float3 camPos, float roughness, float3 surfaceColor, float specularScale)
+{
+	// Get normalize direction to the light
+	float3 toLight = normalize(-light.Direction);
+	float3 toCam = normalize(camPos - worldPos);
+
+	// Calculate the light amounts
+	float diff = Diffuse(normal, toLight);
+	float spec = SpecularBlinnPhong(normal, toLight, toCam, roughness) * specularScale;
+
+	// Combine
+	return (diff * surfaceColor + spec) * light.Intensity * light.Color;
+}
+
+
+float3 PointLight(Light light, float3 normal, float3 worldPos, float3 camPos, float roughness, float3 surfaceColor, float specularScale)
+{
+	// Calc light direction
+	float3 toLight = normalize(light.Position - worldPos);
+	float3 toCam = normalize(camPos - worldPos);
+
+	// Calculate the light amounts
+	float atten = Attenuate(light, worldPos);
+	float diff = Diffuse(normal, toLight);
+	float spec = SpecularBlinnPhong(normal, toLight, toCam, roughness) * specularScale;
+
+	// Combine
+	return (diff * surfaceColor + spec) * atten * light.Intensity * light.Color;
+}
+
+
+float3 SpotLight(Light light, float3 normal, float3 worldPos, float3 camPos, float roughness, float3 surfaceColor, float specularScale)
+{
+	// Calculate the spot falloff
+	float3 toLight = normalize(light.Position - worldPos);
+	float penumbra = pow(saturate(dot(-toLight, light.Direction)), light.SpotFalloff);
+
+	// Combine with the point light calculation
+	// Note: This could be optimized a bit
+	return PointLight(light, normal, worldPos, camPos, roughness, surfaceColor, specularScale) * penumbra;
+}
+
+
+// === PHYSICALLY BASED LIGHTING ====================================
+
+// PBR Constants:
+
+// The fresnel value for non-metals (dielectrics)
+// Page 9: "F0 of nonmetals is now a constant 0.04"
+// http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+// Also slide 65 of http://blog.selfshadow.com/publications/s2014-shading-course/hoffman/s2014_pbs_physics_math_slides.pdf
+static const float F0_NON_METAL = 0.04f;
+
+// Need a minimum roughness for when spec distribution function denominator goes to zero
+static const float MIN_ROUGHNESS = 0.0000001f; // 6 zeros after decimal
+
+static const float PI = 3.14159265359f;
+static const float TWO_PI = PI * 2.0f;
+static const float HALF_PI = PI / 2.0f;
+static const float QUARTER_PI = PI / 4.0f;
+
+// General helpers
+float Schlick_F0_F90(float3 v, float3 h, float f0, float f90)
+{
+	float VdotH = saturate(dot(v, h));
+	return f0 + (f90 - f0) * pow(1 - VdotH, 5);
+}
+
+// Lambert diffuse BRDF - Same as the basic lighting!
+float DiffusePBR(float3 normal, float3 dirToLight)
+{
+	return saturate(dot(normal, dirToLight));
+}
+
+// Burley diffuse BRDF
+float DiffuseBurleyPBR(float3 n, float3 l, float3 v, float rough) 
+{
+	float3 h = normalize(l+v);
+	float LdotH = dot(l, h);
+    float f90 = 0.5 + 2.0 * rough * LdotH * LdotH;
+    float lResult = Schlick_F0_F90(n, l, 1.0f, f90);
+    float vResult  = Schlick_F0_F90(n, v, 1.0f, f90);
+    return lResult * vResult * max(dot(n, l), 0);
 }
 
 
@@ -66,17 +196,17 @@ float3 DiffuseEnergyConserve(float3 diffuse, float3 F, float metalness)
 float D_GGX(float3 n, float3 h, float roughness)
 {
 	// Pre-calculations
-    float NdotH = saturate(dot(n, h));
-    float NdotH2 = NdotH * NdotH;
-    float a = roughness * roughness;
-    float a2 = max(a * a, MIN_ROUGHNESS); // Applied after remap!
+	float NdotH = saturate(dot(n, h));
+	float NdotH2 = NdotH * NdotH;
+	float a = roughness * roughness;
+	float a2 = max(a * a, MIN_ROUGHNESS); // Applied after remap!
 
 	// ((n dot h)^2 * (a^2 - 1) + 1)
 	// Can go to zero if roughness is 0 and NdotH is 1
-    float denomToSquare = NdotH2 * (a2 - 1) + 1;
+	float denomToSquare = NdotH2 * (a2 - 1) + 1;
 
 	// Final value
-    return a2 / (PI * denomToSquare * denomToSquare);
+	return a2 / (PI * denomToSquare * denomToSquare);
 }
 
 
@@ -91,11 +221,13 @@ float D_GGX(float3 n, float3 h, float roughness)
 float3 F_Schlick(float3 v, float3 h, float3 f0)
 {
 	// Pre-calculations
-    float VdotH = saturate(dot(v, h));
+	float VdotH = saturate(dot(v, h));
 
 	// Final value
-    return f0 + (1 - f0) * pow(1 - VdotH, 5);
+	return f0 + (1 - f0) * pow(1 - VdotH, 5);
 }
+
+
 
 // Geometric Shadowing - Schlick-GGX
 // - k is remapped to a / 2, roughness remapped to (r+1)/2 before squaring!
@@ -109,19 +241,31 @@ float3 F_Schlick(float3 v, float3 h, float3 f0)
 float G_SchlickGGX(float3 n, float3 v, float roughness)
 {
 	// End result of remapping:
-    float k = pow(roughness + 1, 2) / 8.0f;
-    float NdotV = saturate(dot(n, v));
+	float k = pow(roughness + 1, 2) / 8.0f;
+	float NdotV = saturate(dot(n, v));
 
 	// Final value
 	// Note: Numerator should be NdotV (or NdotL depending on parameters).
 	// However, these are also in the BRDF's denominator, so they'll cancel!
 	// We're leaving them out here AND in the BRDF function as the
 	// dot products can get VERY small and cause rounding errors.
-    return 1 / (NdotV * (1 - k) + k);
+	return 1 / (NdotV * (1 - k) + k);
+}
+
+// Work in progress - Note: Requires NdotL applied to overall specular BRDF!
+float G_Full_Canceling_Denominator(float3 n, float3 v, float3 l, float roughness)
+{
+	float NdotV = max(dot(n, v), 0);
+	float NdotL = max(dot(n, l), 0);
+	float k = pow(roughness + 1, 2) / 8.0f;
+
+	float G_V = NdotV * (1 - k) + k;
+	float G_L = NdotL * (1 - k) + k;
+
+	return 1.0 / (G_V * G_L * 4);
 }
 
 
- 
 // Cook-Torrance Microfacet BRDF (Specular)
 //
 // f(l,v) = D(h)F(v,h)G(l,v,h) / 4(n dot l)(n dot v)
@@ -133,185 +277,96 @@ float G_SchlickGGX(float3 n, float3 v, float roughness)
 float3 MicrofacetBRDF(float3 n, float3 l, float3 v, float roughness, float3 f0, out float3 F_out)
 {
 	// Other vectors
-    float3 h = normalize(v + l);
+	float3 h = normalize(v + l);
 
 	// Run numerator functions
-    float D = D_GGX(n, h, roughness);
-    float3 F = F_Schlick(v, h, f0);
-    float G = G_SchlickGGX(n, v, roughness) * G_SchlickGGX(n, l, roughness);
+	float D = D_GGX(n, h, roughness);
+	float3 F = F_Schlick(v, h, f0);
+	float G = G_SchlickGGX(n, v, roughness) * G_SchlickGGX(n, l, roughness);
 	
 	// Pass F out of the function for diffuse balance
-    F_out = F;
+	F_out = F;
 
 	// Final specular formula
 	// Note: The denominator SHOULD contain (NdotV)(NdotL), but they'd be
 	// canceled out by our G() term.  As such, they have been removed
 	// from BOTH places to prevent floating point rounding errors.
-    float3 specularResult = (D * F * G) / 4;
+	float3 specularResult = (D * F * G) / 4;
 
 	// One last non-obvious requirement: According to the rendering equation,
 	// specular must have the same NdotL applied as diffuse!  We'll apply
 	// that here so that minimal changes are required elsewhere.
-    return specularResult * max(dot(n, l), 0);
+	return specularResult * max(dot(n, l), 0);
+}
+
+// Calculates diffuse amount based on energy conservation
+//
+// diffuse   - Diffuse amount
+// F         - Fresnel result from microfacet BRDF
+// metalness - surface metalness amount
+//
+// Metals should have an albedo of (0,0,0)...mostly
+// See slide 65: http://blog.selfshadow.com/publications/s2014-shading-course/hoffman/s2014_pbs_physics_math_slides.pdf
+float3 DiffuseEnergyConserve(float3 diffuse, float3 F, float metalness)
+{
+	return diffuse * (1 - F) * (1 - metalness);
 }
 
 
+// === LIGHT TYPES FOR PBR LIGHTING =================================
 
-struct Light
+
+float3 DirLightPBR(Light light, float3 normal, float3 worldPos, float3 camPos, float roughness, float metalness, float3 surfaceColor, float3 specularColor, bool useBurleyDiffuse)
 {
-    int Type; // Which kind of light? 0, 1 or 2 (see above)
-    float3 Direction; // Directional and Spot lights need a direction
-    
-    float Range; // Point and Spot lights have a max range for attenuation
-    float3 Position; // Point and Spot lights have a position in space
-    
-    float Intensity; // All lights need an intensity
-    float3 Color; // All lights need a color
+	// Get normalize direction to the light
+	float3 toLight = normalize(-light.Direction);
+	float3 toCam = normalize(camPos - worldPos);
 
-    float SpotInnerAngle; // Inner cone angle (in radians) – Inside this, full light!
-    float SpotOuterAngle; // Outer cone angle (radians) – Outside this, no light!
-    float2 Padding; // Purposefully padding to hit the 16-byte boundary
-};
+	// Calculate the light amounts
+	float diff = useBurleyDiffuse ? DiffuseBurleyPBR(normal, toLight, toCam, roughness) : DiffusePBR(normal, toLight);
+	float3 F;
+	float3 spec = MicrofacetBRDF(normal, toLight, toCam, roughness, specularColor, F);
+	
+	// Calculate diffuse with energy conservation
+	// (Reflected light doesn't get diffused)
+	float3 balancedDiff = DiffuseEnergyConserve(diff, spec, metalness);
 
-
-float Attenuate(Light light, float3 worldPos)
-{
-    float dist = distance(light.Position, worldPos);
-    float att = saturate(1.0f - (dist * dist / (light.Range * light.Range)));
-    return att * att;
+	// Combine amount with 
+	return (balancedDiff * surfaceColor + spec) * light.Intensity * light.Color;
 }
 
-float3 LambertDiffuse(float3 lightDirection, float3 normal)
+
+float3 PointLightPBR(Light light, float3 normal, float3 worldPos, float3 camPos, float roughness, float metalness, float3 surfaceColor, float3 specularColor, bool useBurleyDiffuse)
 {
-    // saturate(N*L)*C_surface*C_light*I_Light
-    return saturate(dot(normal, lightDirection));
+	// Calc light direction
+	float3 toLight = normalize(light.Position - worldPos);
+	float3 toCam = normalize(camPos - worldPos);
+
+	// Calculate the light amounts
+	float atten = Attenuate(light, worldPos);
+	float diff = useBurleyDiffuse ? DiffuseBurleyPBR(normal, toLight, toCam, roughness) : DiffusePBR(normal, toLight);
+	float3 F;
+	float3 spec = MicrofacetBRDF(normal, toLight, toCam, roughness, specularColor, F);
+
+	// Calculate diffuse with energy conservation
+	// (Reflected light doesn't diffuse)
+	float3 balancedDiff = DiffuseEnergyConserve(diff, spec, metalness);
+
+	// Combine
+	return (balancedDiff * surfaceColor + spec) * atten * light.Intensity * light.Color;
 }
 
-float PhongSpecular(float3 lightDirection, float3 normal, float3 worldPosition, float3 cameraPosition, float roughness)
+
+float3 SpotLightPBR(Light light, float3 normal, float3 worldPos, float3 camPos, float roughness, float metalness, float3 surfaceColor, float3 specularColor, bool useBurleyDiffuse)
 {
-    float3 refl = reflect(-normalize(lightDirection), normal);
-    
-    float3 viewVector = normalize(cameraPosition - worldPosition);
-    
-    float specExponent = (1.0f - roughness) * MAX_SPECULAR_EXPONENT;
-    
-    float specTerm = pow(max(dot(viewVector, refl), 0.0f), specExponent);
-    
-    return roughness == 1 ? 0 : specTerm;
+	// Calculate the spot falloff
+	float3 toLight = normalize(light.Position - worldPos);
+	float penumbra = pow(saturate(dot(-toLight, light.Direction)), light.SpotFalloff);
+
+	// Combine with the point light calculation
+	// Note: This could be optimized a bit
+	return PointLightPBR(light, normal, worldPos, camPos, roughness, metalness, surfaceColor, specularColor, useBurleyDiffuse) * penumbra;
 }
 
-float3 DirectionalLight(Light light, float3 color, SamplerState BasicSampler, Texture2D SurfaceSpecularMap, VertexToPixel input, float3 eyePos)
-{
-    float3 lightDirection = normalize(-light.Direction);
-    float lightIntensity = light.Intensity;
-    float3 lightColor = light.Color;
 
-    float3 diffuse = color * LambertDiffuse(lightDirection, input.normal);
-
-    float3 spec = PhongSpecular(lightDirection, input.normal, input.worldPosition, eyePos,
-        SurfaceSpecularMap.Sample(BasicSampler, input.uv).r);
-
-    spec *= any(diffuse);
-    
-    return (diffuse * color + spec) * light.Intensity * light.Color;
-}
-
-float3 PointLight(Light light, float3 surfaceColor, SamplerState BasicSampler, Texture2D SurfaceSpecularMap, VertexToPixel input, float3 eyePos)
-{
-    float3 lightDirection = normalize(light.Position - input.worldPosition);
-    float lightIntensity = light.Intensity;
-    float3 lightColor = light.Color;
-
-    float attenuation = Attenuate(light, input.worldPosition);
-    
-    float3 diffuse = light.Color * LambertDiffuse(lightDirection, input.normal);
-
-    float3 spec = PhongSpecular(lightDirection, input.normal, input.worldPosition, eyePos,
-        SurfaceSpecularMap.Sample(BasicSampler, input.uv).r);
-
-    spec *= any(diffuse);
-    
-    return (diffuse * surfaceColor + spec) * attenuation * lightIntensity * lightColor;
-}
-
-float3 SpotLight(Light light, float3 surfaceColor, SamplerState BasicSampler, Texture2D SurfaceSpecularMap, VertexToPixel input, float3 eyePos)
-{
-    float3 lightDirection = -normalize(light.Direction);
-    float3 lightToPixel = normalize(light.Position - input.worldPosition);
-
-    float pixelAngle = saturate(dot(lightToPixel, lightDirection));
-
-    float cosOuter = cos(light.SpotOuterAngle);
-    float cosInner = cos(light.SpotInnerAngle);
-
-    float spotTerm = saturate((cosOuter - pixelAngle) / (cosOuter - cosInner));
-    
-    return PointLight(light, surfaceColor, BasicSampler, SurfaceSpecularMap, input, eyePos) * spotTerm;
-}
-
-float3 DirectionalLightPBR(Light light, VertexToPixel input, float3 albedo, float roughness, float metalness, float3 eyePos)
-{
-    float3 specColor = lerp(F0_NON_METAL, albedo.rgb, metalness);
-    float3 toLight = normalize(-light.Direction);
-    float3 toCam = normalize(eyePos - input.worldPosition);
-        
-        // Calculate the light amounts
-    float diff = DiffusePBR(input.normal, toLight);
-    float3 F;
-    float3 spec = MicrofacetBRDF(input.normal, toLight, toCam, roughness, specColor, F);
-        // Calculate diffuse with energy conservation, including cutting diffuse for metals
-    float3 balancedDiff = DiffuseEnergyConserve(diff, F, metalness);
-        // Combine the final diffuse and specular values for this light
-    return (balancedDiff * albedo + spec) * light.Intensity * light.Color;
-}
-
-float3 PointLightPBR(VertexToPixel input, Light light, float3 albedo, float roughness, float metalness, float3 eyePos)
-{
-    float3 specColor = lerp(F0_NON_METAL, albedo.rgb, metalness);
-    float3 toLight = normalize(light.Position - input.worldPosition);
-    float3 toCam = normalize(eyePos - input.worldPosition);
-        
-    
-    float atten = Attenuate(light, input.worldPosition);
-        // Calculate the light amounts
-    float diff = DiffusePBR(input.normal, toLight);
-    float3 F;
-    float3 spec = MicrofacetBRDF(input.normal, toLight, toCam, roughness, specColor, F);
-        // Calculate diffuse with energy conservation, including cutting diffuse for metals
-    float3 balancedDiff = DiffuseEnergyConserve(diff, F, metalness) * albedo;
-        // Combine the final diffuse and specular values for this light
-    return (balancedDiff * albedo + spec) * light.Intensity * light.Color * atten;
-}
-
-float3 SpotLightPBR(VertexToPixel input, Light light, float3 albedo, float roughness, float metalness, float3 eyePos)
-{
-    float3 lightDirection = -normalize(light.Direction);
-    float3 lightToPixel = normalize(light.Position - input.worldPosition);
-
-    float pixelAngle = saturate(dot(lightToPixel, lightDirection));
-
-    float cosOuter = cos(light.SpotOuterAngle);
-    float cosInner = cos(light.SpotInnerAngle);
-
-    float spotTerm = saturate((cosOuter - pixelAngle) / (cosOuter - cosInner));
-    
-    return PointLightPBR(input, light, albedo, roughness, metalness, eyePos) * spotTerm;
-}
-
-float ShadowAmount(VertexToPixel input, Texture2D ShadowMap, SamplerState ShadowSampler)
-{
-    //// Perform the perspective divide (divide by W) ourselves
-    //input.shadowMapPos /= input.shadowMapPos.w;
-    //// Convert the normalized device coordinates to UVs for sampling
-    //float2 shadowUV = input.shadowMapPos.xy * 0.5f + 0.5f;
-    //shadowUV.y = 1 - shadowUV.y; // Flip the Y
-    //// Grab the distances we need: light-to-pixel and closest-surface
-    //float distToLight = input.shadowMapPos.z;
-    float shadowAmount = 0; // ShadowMap.SampleCmpLevelZero(
-    //    ShadowSampler,
-    //    shadowUV,
-    //    distToLight).r;
-    
-    return shadowAmount;
-}
 #endif

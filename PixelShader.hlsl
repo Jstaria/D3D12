@@ -5,15 +5,15 @@
 // - The name of the struct itself is unimportant
 // - The variable names don't have to match other shaders (just the semantics)
 // - Each variable must have a semantic, which defines its usage
-//struct VertexToPixel
-//{
-//    float4 screenPosition : SV_POSITION;
-//    float2 uv : TEXCOORD;
-//    float3 normal : NORMAL;
-//    float3 tangent : TANGENT;
-//    float3 worldPosition : POSITION;
-//    float4 shadowMapPos : SHADOW_POSITION;
-//};
+struct VertexToPixel
+{
+    float4 screenPosition : SV_POSITION;
+    float2 uv : TEXCOORD;
+    float3 normal : NORMAL;
+    float3 tangent : TANGENT;
+    float3 worldPosition : POSITION;
+    //float4 shadowMapPos : SHADOW_POSITION;
+};
 
 cbuffer PixelData : register(b0)
 {
@@ -27,12 +27,12 @@ cbuffer PixelData : register(b0)
     float2 uvOffset;
     float3 cameraPosition;
     int lightCount;
-    Light lightArray[MAX_LIGHTS];
+    Light lights[MAX_LIGHTS];
     
 };
 
 SamplerState BasicSampler : register(s0);
-
+Texture2D AllTextures[] : register(t0, space0);
 // --------------------------------------------------------
 // The entry point (main method) for our pixel shader
 // 
@@ -44,58 +44,61 @@ SamplerState BasicSampler : register(s0);
 // --------------------------------------------------------
 float4 main(VertexToPixel input) : SV_TARGET
 {
-    Texture2D AlbedoTexture = ResourceDescriptorHeap[albedo];
-    Texture2D NormalMap = ResourceDescriptorHeap[normalMap];
-    Texture2D RoughnessMap = ResourceDescriptorHeap[roughness];
-    Texture2D MetalMap = ResourceDescriptorHeap[metalness];
-    
-    float shadowAmount = 0; //ShadowAmount(input);
-
+    Texture2D AlbedoTexture = AllTextures[albedo];
+    Texture2D NormalMap = AllTextures[normalMap];
+    Texture2D RoughnessMap = AllTextures[roughness];
+    Texture2D MetalMap = AllTextures[metalness];
+	
+	// Clean up un-normalized normals
     input.normal = normalize(input.normal);
     input.tangent = normalize(input.tangent);
-    input.uv = (input.uv * uvScale) + uvOffset;
+	
+	// Scale and offset uv as necessary
+    input.uv = input.uv * uvScale + uvOffset;
 
+	// Normal mapping
+    input.normal = NormalMapping(NormalMap, BasicSampler, input.uv, input.normal, input.tangent);
+
+	// Surface color with gamma correction
+    float4 surfaceColor = AlbedoTexture.Sample(BasicSampler, input.uv);
+    surfaceColor.rgb = pow(surfaceColor.rgb, 2.2);
+	
+	// Sample the other maps
+    float roughness = RoughnessMap.Sample(BasicSampler, input.uv).r;
+    float metal = MetalMap.Sample(BasicSampler, input.uv).r;
+	
+	// Specular color - Assuming albedo texture is actually holding specular color if metal == 1
+	// Note the use of lerp here - metal is generally 0 or 1, but might be in between
+	// because of linear texture sampling, so we want lerp the specular color to match
+    float3 specColor = lerp(F0_NON_METAL.rrr, surfaceColor.rgb, metal);
+
+	// Keep a running total of light
     float3 totalLight = float3(0, 0, 0);
-	
-    float3 color = AlbedoTexture.Sample(BasicSampler, input.uv).xyz /** iTint.xyz*/;
-    color = pow(color, 2.2f);
-    
-    float3 ambientTerm = float3(0,0,0) * color;
-	
-    float3 normalFromMap = normalize(NormalMap.Sample(BasicSampler, input.uv) * 2 - 1).xyz;
-    
-    // calc matrix
-    float3 N = input.normal;
-    float3 T = normalize(input.tangent - N * dot(N, input.tangent));
-    float3 B = cross(T, N);
-    
-    float3x3 TBN = float3x3(T, B, N);
-    input.normal = mul(normalFromMap, TBN);
-    
-    totalLight += ambientTerm;
-    
-    for (int i = 0; i < MAX_LIGHTS; i++)
+
+	// Loop and handle all lights
+    for (int i = 0; i < lightCount; i++)
     {
-        if (lightArray[i].Intensity < 0)
-            continue;
-      
-        switch (lightArray[i].Type)
+		// Grab this light and normalize the direction (just in case)
+        Light light = lights[i];
+        light.Direction = normalize(light.Direction);
+
+		// Run the correct lighting calculation based on the light's type
+        switch (lights[i].Type)
         {
             case LIGHT_TYPE_DIRECTIONAL:
-                totalLight += DirectionalLight(lightArray[i], color, BasicSampler, RoughnessMap, input, cameraPosition) * (i == 0 ? shadowAmount : 1);
+                totalLight += DirLightPBR(light, input.normal, input.worldPosition, cameraPosition, roughness, metal, surfaceColor.rgb, specColor, 0);
                 break;
-          
+
             case LIGHT_TYPE_POINT:
-                totalLight += PointLight(lightArray[i], color, BasicSampler, RoughnessMap, input, cameraPosition);
+                totalLight += PointLightPBR(light, input.normal, input.worldPosition, cameraPosition, roughness, metal, surfaceColor.rgb, specColor, 0);
                 break;
-          
+
             case LIGHT_TYPE_SPOT:
-                totalLight += SpotLight(lightArray[i], color, BasicSampler, RoughnessMap, input, cameraPosition);
+                totalLight += SpotLightPBR(light, input.normal, input.worldPosition, cameraPosition, roughness, metal, surfaceColor.rgb, specColor, 0);
                 break;
         }
     }
-	
-    float3 gammaAdjustedColor = pow(totalLight, 1.0f / 2.2f);
-    
-    return float4(color, 1);
+
+	// Gamma correct and return
+    return float4(pow(totalLight, 1.0f / 2.2f), 1.0f);
 }

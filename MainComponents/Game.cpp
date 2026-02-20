@@ -102,6 +102,13 @@ void Game::CreateRootSigAndPipelineState()
 		cbvTableP.RegisterSpace = 0;
 		cbvTableP.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
+		D3D12_DESCRIPTOR_RANGE bindlessRange{};
+		bindlessRange.BaseShaderRegister = 0; // Matches t0 in shader
+		bindlessRange.RegisterSpace = 0; // Matches space0 in shader
+		bindlessRange.NumDescriptors = -1; // All (or Graphics::MaxTextureDescriptors)
+		bindlessRange.OffsetInDescriptorsFromTableStart = 0;
+		bindlessRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+
 		// Create a single static sampler (available to all pixel shaders)
 		D3D12_STATIC_SAMPLER_DESC anisoWrap = {};
 		anisoWrap.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -115,7 +122,7 @@ void Game::CreateRootSigAndPipelineState()
 		D3D12_STATIC_SAMPLER_DESC samplers[] = { anisoWrap };
 
 		// Define the root parameter
-		D3D12_ROOT_PARAMETER rootParams[2];
+		D3D12_ROOT_PARAMETER rootParams[3];
 		rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 		rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
@@ -126,11 +133,15 @@ void Game::CreateRootSigAndPipelineState()
 		rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
 		rootParams[1].DescriptorTable.pDescriptorRanges = &cbvTableP;
 
+		rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		rootParams[2].DescriptorTable.NumDescriptorRanges = 1;
+		rootParams[2].DescriptorTable.pDescriptorRanges = &bindlessRange;
+
 		// Describe the overall the root signature
 		D3D12_ROOT_SIGNATURE_DESC rootSig = {};
 		rootSig.Flags =
-			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-			D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED;
+			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 		rootSig.NumParameters = ARRAYSIZE(rootParams);
 		rootSig.pParameters = rootParams;
 		rootSig.NumStaticSamplers = ARRAYSIZE(samplers);
@@ -294,6 +305,7 @@ void Game::Initialize()
 	camera = std::make_shared<FPSCamera>("MainCamera", XMFLOAT3(0, 0, -5.0f), 5.0f, .002f, 80, Window::AspectRatio(), 0.01f, 1000.0f);
 
 	lights.push_back(std::make_shared<Light>("Directional Light", true, true, XMFLOAT3(1, 1, 1), XMFLOAT3(-1, -1, 1), 2));
+	lights.push_back(std::make_shared<Light>("Directional Light", true, true, XMFLOAT3(0, 0, 2), XMFLOAT3(-1, -1, 1), 2, 10));
 
 	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Torus", drawables[0], nullptr, materials[0])));
 	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Cube", drawables[1], nullptr, materials[1])));
@@ -395,9 +407,22 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		// Set up other commands for rendering
 		Graphics::CommandList->SetDescriptorHeaps(1, Graphics::CBVSRVDescriptorHeap.GetAddressOf());
-
 		// Root sig (must happen before root descriptor table)
 		Graphics::CommandList->SetGraphicsRootSignature(rootSignature.Get());
+
+		// Bind a specific part of it to the "bindless range" of our root signature
+		// Step 1: Grab the handle of the beginning
+		D3D12_GPU_DESCRIPTOR_HANDLE handleToSRVs =
+			Graphics::CBVSRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+
+		// Step 2: Offset to the first SRV
+		unsigned int incSize = Graphics::Device->GetDescriptorHandleIncrementSize(
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		handleToSRVs.ptr += Graphics::MaxConstantBuffers * incSize;
+
+		// Actually bind
+		Graphics::CommandList->SetGraphicsRootDescriptorTable(2, handleToSRVs);
 
 		Graphics::CommandList->OMSetRenderTargets(
 			1, &Graphics::RTVHandles[Graphics::SwapChainIndex()], true, &Graphics::DSVHandle);
@@ -414,6 +439,12 @@ void Game::Draw(float deltaTime, float totalTime)
 		camData.viewMatrix = camera->GetView();
 		camData.projMatrix = camera->GetProjection();
 
+		std::vector<LightStruct> lightStructs;
+
+		for (auto& light : lights) {
+			lightStructs.push_back(light->GetStruct());
+		}
+
 		for (auto& g : gameObjs)
 		{
 			camData.worldMatrix = g->GetTransform()->GetWorldMatrix();
@@ -425,7 +456,10 @@ void Game::Draw(float deltaTime, float totalTime)
 
 			PixelData psData = g->GetMaterial()->GetPixelData();
 			psData.cameraPosition = camera->GetTransform()->GetPosition();
-			memcpy(psData.lights, &lights[0], sizeof(lights));
+			psData.lightCount = lights.size();
+			memcpy(psData.lights,
+				lightStructs.data(),
+				sizeof(LightStruct) * 2);
 
 			handle = Graphics::FillNextConstBufAndGetGPUDescHan((void*)(&psData), sizeof(PixelData));
 
@@ -461,10 +495,7 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		Graphics::AdvanceSwapChainIndex();
 
-		// Wait for the GPU to be done and then reset the command list & allocator
-		Graphics::WaitForGPU();
-
-		Graphics::ResetAllocatorAndCommandList();
+		Graphics::ResetAllocatorAndCommandList(Graphics::SwapChainIndex());
 	}
 }
 
