@@ -23,8 +23,8 @@ public:
 	bool GetActive();
 
 	void Draw() override;
-	void DrawImGui();
-	void FixedUpdate(float deltaTime) override;
+	//void DrawImGui();
+	void Update(float deltaTime) override;
 
 	LightStruct GetStruct();
 };

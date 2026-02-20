@@ -35,6 +35,7 @@ void GameObject::SetObjAsChild(GameObject* child) { childObjs.push_back(child); 
 void GameObject::SetTint(XMFLOAT4 tintColor) { tint = tintColor; }
 void GameObject::SetMaterial(std::shared_ptr<Material> material) { this->material = material; }
 void GameObject::SetDrawable(std::shared_ptr<IDrawable> drawable) { this->drawable = drawable; }
+void GameObject::SetCamPos(DirectX::XMFLOAT3 camPos) { this->camPos = camPos; }
 
 /*void GameObject::DrawImGui(std::map<const char*, std::shared_ptr<Material>> materials, std::vector<const char*> materialKeys)
 {
@@ -85,15 +86,7 @@ void GameObject::SetDrawable(std::shared_ptr<IDrawable> drawable) { this->drawab
 
 void GameObject::Draw()
 {
-	Graphics::CommandList->SetPipelineState(material->GetPipelineState().Get());
 	
-	PixelData psData = material->GetPixelData();
-
-	D3D12_GPU_DESCRIPTOR_HANDLE handle = Graphics::FillNextConstBufAndGetGPUDescHan((void*)(&psData), sizeof(PixelData));
-
-	Graphics::CommandList->SetGraphicsRootDescriptorTable(1, handle);
-
-	drawable->Draw();
 }
 
 void GameObject::Update(float deltaTime)
