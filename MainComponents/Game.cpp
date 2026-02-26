@@ -122,7 +122,7 @@ void Game::CreateRootSigAndPipelineState()
 		D3D12_STATIC_SAMPLER_DESC samplers[] = { anisoWrap };
 
 		// Define the root parameter
-		D3D12_ROOT_PARAMETER rootParams[3];
+		D3D12_ROOT_PARAMETER rootParams[2];
 		rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 		rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
@@ -133,15 +133,15 @@ void Game::CreateRootSigAndPipelineState()
 		rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
 		rootParams[1].DescriptorTable.pDescriptorRanges = &cbvTableP;
 
-		rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-		rootParams[2].DescriptorTable.NumDescriptorRanges = 1;
-		rootParams[2].DescriptorTable.pDescriptorRanges = &bindlessRange;
+		//rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		//rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		//rootParams[2].DescriptorTable.NumDescriptorRanges = 1;
+		//rootParams[2].DescriptorTable.pDescriptorRanges = &bindlessRange;
 
 		// Describe the overall the root signature
 		D3D12_ROOT_SIGNATURE_DESC rootSig = {};
 		rootSig.Flags =
-			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED;
 		rootSig.NumParameters = ARRAYSIZE(rootParams);
 		rootSig.pParameters = rootParams;
 		rootSig.NumStaticSamplers = ARRAYSIZE(samplers);
@@ -258,9 +258,9 @@ void Game::CreateGeometry()
 
 	std::unordered_map<TextureID, unsigned int> cobbleMap = {
 	{TextureID::ALBEDO, cobblestoneAlbedo },
-	{TextureID::NORMAL_MAP, cobblestoneAlbedo },
-	{TextureID::METALNESS, cobblestoneRoughness },
-	{TextureID::ROUGHNESS, cobblestoneMetal },
+	{TextureID::NORMAL_MAP, cobblestoneNormals },
+	{TextureID::ROUGHNESS, cobblestoneRoughness },
+	{TextureID::METALNESS, cobblestoneMetal },
 	};
 
 	unsigned int bronzeAlbedo = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/bronze_albedo.png").c_str());
@@ -271,8 +271,8 @@ void Game::CreateGeometry()
 	std::unordered_map<TextureID, unsigned int> bronzeMap = {
 	{TextureID::ALBEDO, bronzeAlbedo },
 	{TextureID::NORMAL_MAP, bronzeNormals },
-	{TextureID::METALNESS, bronzeRoughness },
-	{TextureID::ROUGHNESS, bronzeMetal },
+	{TextureID::ROUGHNESS, bronzeRoughness },
+	{TextureID::METALNESS, bronzeMetal },
 	};
 
 	unsigned int scratchedAlbedo = Graphics::LoadTexture(FixPath(AssetPath + L"Textures/PBR/scratched_albedo.png").c_str());
@@ -283,16 +283,16 @@ void Game::CreateGeometry()
 	std::unordered_map<TextureID, unsigned int> scratchedMap = {
 	{TextureID::ALBEDO, scratchedAlbedo },
 	{TextureID::NORMAL_MAP, scratchedNormals },
-	{TextureID::METALNESS, scratchedRoughness },
-	{TextureID::ROUGHNESS, scratchedMetal },
+	{TextureID::ROUGHNESS, scratchedRoughness },
+	{TextureID::METALNESS, scratchedMetal },
 	};
 
 	materials.push_back(std::make_shared<Material>("cobble", cobbleMap, pipelineState, XMFLOAT4(1, 1, 1, 1)));
 	materials.push_back(std::make_shared<Material>("bronze", bronzeMap, pipelineState, XMFLOAT4(1, 1, 1, 1)));
 	materials.push_back(std::make_shared<Material>("scratched", scratchedMap, pipelineState, XMFLOAT4(1, 1, 1, 1)));
 
-	drawables.push_back(std::make_shared<Mesh>("Torus", FixPath("../../Assets/Meshes/torus.obj").c_str()));
-	drawables.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/crate_wood.obj").c_str()));
+	drawables.push_back(std::make_shared<Mesh>("Torus", FixPath("../../Assets/Meshes/sphere.obj").c_str()));
+	drawables.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/cube.obj").c_str()));
 	drawables.push_back(std::make_shared<Mesh>("Helix", FixPath("../../Assets/Meshes/helix.obj").c_str()));
 
 }
@@ -302,7 +302,7 @@ void Game::CreateGeometry()
 // --------------------------------------------------------
 void Game::Initialize()
 {
-	camera = std::make_shared<FPSCamera>("MainCamera", XMFLOAT3(0, 0, -5.0f), 5.0f, .002f, 80, Window::AspectRatio(), 0.01f, 1000.0f);
+	camera = std::make_shared<FPSCamera>("MainCamera", XMFLOAT3(0, 0, -5.0f), 5.0f, .002f, 80.0f, Window::AspectRatio(), 0.01f, 1000.0f);
 
 	lights.push_back(std::make_shared<Light>("Directional Light", true, true, XMFLOAT3(1, 1, 1), XMFLOAT3(-1, -1, 1), 2));
 	lights.push_back(std::make_shared<Light>("Directional Light", true, true, XMFLOAT3(0, 0, 2), XMFLOAT3(-1, -1, 1), 2, 10));
@@ -382,7 +382,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		Graphics::CommandList->ResourceBarrier(1, &rb);
 
 		// Background color (Cornflower Blue in this case) for clearing
-		float color[] = { 0.4f, 0.6f, 0.75f, 1.0f };
+		float color[] = { 0,0,0,1 }; //{ 0.4f, 0.6f, 0.75f, 1.0f };
 
 		// Clear the RTV
 		Graphics::CommandList->ClearRenderTargetView(
@@ -410,19 +410,19 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Root sig (must happen before root descriptor table)
 		Graphics::CommandList->SetGraphicsRootSignature(rootSignature.Get());
 
-		// Bind a specific part of it to the "bindless range" of our root signature
-		// Step 1: Grab the handle of the beginning
-		D3D12_GPU_DESCRIPTOR_HANDLE handleToSRVs =
-			Graphics::CBVSRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+		//// Bind a specific part of it to the "bindless range" of our root signature
+		//// Step 1: Grab the handle of the beginning
+		//D3D12_GPU_DESCRIPTOR_HANDLE handleToSRVs =
+		//	Graphics::CBVSRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 
-		// Step 2: Offset to the first SRV
-		unsigned int incSize = Graphics::Device->GetDescriptorHandleIncrementSize(
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		//// Step 2: Offset to the first SRV
+		//unsigned int incSize = Graphics::Device->GetDescriptorHandleIncrementSize(
+		//	D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-		handleToSRVs.ptr += Graphics::MaxConstantBuffers * incSize;
+		//handleToSRVs.ptr += Graphics::MaxConstantBuffers * incSize;
 
-		// Actually bind
-		Graphics::CommandList->SetGraphicsRootDescriptorTable(2, handleToSRVs);
+		//// Actually bind
+		//Graphics::CommandList->SetGraphicsRootDescriptorTable(2, handleToSRVs);
 
 		Graphics::CommandList->OMSetRenderTargets(
 			1, &Graphics::RTVHandles[Graphics::SwapChainIndex()], true, &Graphics::DSVHandle);
@@ -448,6 +448,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		for (auto& g : gameObjs)
 		{
 			camData.worldMatrix = g->GetTransform()->GetWorldMatrix();
+			camData.invWorldMatrix = g->GetTransform()->GetWorldInverseTransposeMatrix();
 
 			D3D12_GPU_DESCRIPTOR_HANDLE handle = Graphics::FillNextConstBufAndGetGPUDescHan((void*)(&camData), sizeof(ExternalData));
 			Graphics::CommandList->SetGraphicsRootDescriptorTable(0, handle);
@@ -456,10 +457,8 @@ void Game::Draw(float deltaTime, float totalTime)
 
 			PixelData psData = g->GetMaterial()->GetPixelData();
 			psData.cameraPosition = camera->GetTransform()->GetPosition();
-			psData.lightCount = lights.size();
-			memcpy(psData.lights,
-				lightStructs.data(),
-				sizeof(LightStruct) * 2);
+			psData.lightCount = 2;
+			memcpy(psData.lights, &lightStructs[0], sizeof(LightStruct) * 64);
 
 			handle = Graphics::FillNextConstBufAndGetGPUDescHan((void*)(&psData), sizeof(PixelData));
 

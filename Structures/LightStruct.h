@@ -10,16 +10,15 @@
 
 struct LightStruct
 {
-    int Type; 
-    DirectX::XMFLOAT3 Direction; 
+    int Type = 0; 
+    DirectX::XMFLOAT3 Direction = DirectX::XMFLOAT3(0,0,0); 
 
-    float Range; 
-    DirectX::XMFLOAT3 Position;
+    float Range = 0; 
+    DirectX::XMFLOAT3 Position = DirectX::XMFLOAT3(0, 0, 0);
 
-    float Intensity;
-    DirectX::XMFLOAT3 Color; 
+    float Intensity = 0;
+    DirectX::XMFLOAT3 Color = DirectX::XMFLOAT3(0, 0, 0);
 
-    float SpotInnerAngle; 
-    float SpotOuterAngle; 
-    DirectX::XMFLOAT2 Padding; 
+    float SpotFallOff = 0; 
+    DirectX::XMFLOAT3 Padding = DirectX::XMFLOAT3(0, 0, 0);
 };

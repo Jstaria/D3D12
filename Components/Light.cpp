@@ -34,8 +34,7 @@ Light::Light(const char* name, bool canUpdate, bool isActive, DirectX::XMFLOAT3 
 	lightStruct.Intensity = intensity;
 	lightStruct.Range = range;
 	lightStruct.Direction = direction;
-	lightStruct.SpotInnerAngle = innerAngle;
-	lightStruct.SpotOuterAngle = outerAngle;
+	lightStruct.SpotFallOff = innerAngle;
 
 	transform->SetScale(0.1f);
 	transform->SetPosition(position);

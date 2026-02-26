@@ -129,7 +129,7 @@ MeshData OBJLoader::LoadOBJ(const char* objFile)
 
 				// If we have no UVs, create a single UV coordinate
 				// that will be used for all vertices
-				if (uvs.size() == 0)
+				if ((int)uvs.size() == 0)
 					uvs.push_back(XMFLOAT2(0, 0));
 			}
 

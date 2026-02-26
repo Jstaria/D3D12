@@ -17,22 +17,22 @@ struct VertexToPixel
 
 cbuffer PixelData : register(b0)
 {
-    uint albedo;
-    uint normalMap;
-    uint metalness;
-    uint roughness;
-    uint emission;
-    uint parallax;
+    uint albedoIndex;
+    uint normalMapIndex;
+    uint metalnessIndex;
+    uint roughnessIndex;
+    
     float2 uvScale;
     float2 uvOffset;
-    float3 cameraPosition;
-    int lightCount;
-    Light lights[MAX_LIGHTS];
     
+    int lightCount;
+    float3 cameraPosition;
+
+    Light lights[MAX_LIGHTS];
 };
 
 SamplerState BasicSampler : register(s0);
-Texture2D AllTextures[] : register(t0, space0);
+//Texture2D AllTextures[] : register(t0, space0);
 // --------------------------------------------------------
 // The entry point (main method) for our pixel shader
 // 
@@ -44,10 +44,10 @@ Texture2D AllTextures[] : register(t0, space0);
 // --------------------------------------------------------
 float4 main(VertexToPixel input) : SV_TARGET
 {
-    Texture2D AlbedoTexture = AllTextures[albedo];
-    Texture2D NormalMap = AllTextures[normalMap];
-    Texture2D RoughnessMap = AllTextures[roughness];
-    Texture2D MetalMap = AllTextures[metalness];
+    Texture2D AlbedoTexture = ResourceDescriptorHeap[albedoIndex];
+    Texture2D NormalMap = ResourceDescriptorHeap[normalMapIndex];
+    Texture2D RoughnessMap = ResourceDescriptorHeap[roughnessIndex];
+    Texture2D MetalMap = ResourceDescriptorHeap[metalnessIndex];
 	
 	// Clean up un-normalized normals
     input.normal = normalize(input.normal);
@@ -76,14 +76,20 @@ float4 main(VertexToPixel input) : SV_TARGET
     float3 totalLight = float3(0, 0, 0);
 
 	// Loop and handle all lights
-    for (int i = 0; i < lightCount; i++)
+    for (int i = 0; i < 1; i++)
     {
 		// Grab this light and normalize the direction (just in case)
-        Light light = lights[i];
+        Light light;// = lights[i];
+        
+        light.Type = LIGHT_TYPE_DIRECTIONAL;
+        light.Color = float3(1, 1, 1);
+        light.Intensity = 1;
+        light.Direction = float3(1, -1, .75f);
+        
         light.Direction = normalize(light.Direction);
 
 		// Run the correct lighting calculation based on the light's type
-        switch (lights[i].Type)
+        switch (light.Type)
         {
             case LIGHT_TYPE_DIRECTIONAL:
                 totalLight += DirLightPBR(light, input.normal, input.worldPosition, cameraPosition, roughness, metal, surfaceColor.rgb, specColor, 0);

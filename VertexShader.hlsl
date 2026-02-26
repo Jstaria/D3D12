@@ -17,24 +17,13 @@ struct VertexToPixel
    // float4 shadowMapPos : SHADOW_POSITION;
 };
 
-struct ExternalData
-{
-    float4x4 viewMatrix;
-    float4x4 projMatrix;
-    float4x4 worldMatrix;
-    float4x4 invWorldMatrix;
-};
-
 cbuffer camData : register(b0)
 {
-    ExternalData data;
+    float4x4 view;
+    float4x4 projection;
+    float4x4 world;
+    float4x4 worldInverseTranspose;
 }
-
-//cbuffer lightData : register(b1)
-//{
-//    float4x4 lightProjection;
-//    float4x4 lightView;
-//}
 
 
 // --------------------------------------------------------
@@ -49,16 +38,19 @@ VertexToPixel main(VertexShaderInput input)
 	// Set up output struct
     VertexToPixel output;
 
-    float4x4 wvp = mul(data.projMatrix, mul(data.viewMatrix, data.worldMatrix));
-	
-    output.worldPosition = mul(data.worldMatrix, float4(input.localPosition, 1.0f)).xyz;
+	// Calc screen position
+    matrix wvp = mul(projection, mul(view, world));
     output.screenPosition = mul(wvp, float4(input.localPosition, 1.0f));
+
+	// Make sure the lighting vectors are in world space
+    output.normal = normalize(mul((float3x3) worldInverseTranspose, input.normal));
+    output.tangent = normalize(mul((float3x3) world, input.tangent));
+
+	// Calc vertex world pos
+    output.worldPosition = mul(world, float4(input.localPosition, 1.0f)).xyz;
+
+	// Pass through the uv
     output.uv = input.uv;
-    output.normal = normalize(mul((float3x3) data.invWorldMatrix, input.normal));
-    output.tangent = normalize(mul((float3x3) data.invWorldMatrix, input.tangent));
-    
-    //matrix shadowWVP = mul(lightProjection, mul(lightView, data.worldMatrix));
-   // output.shadowMapPos = mul(shadowWVP, float4(input.localPosition, 1.0f));
-    
+
     return output;
 }
