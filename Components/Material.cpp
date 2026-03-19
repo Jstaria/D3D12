@@ -3,7 +3,7 @@
 
 using namespace Microsoft::WRL;
 
-Material::Material(const char* name, std::unordered_map<TextureID, unsigned int> textures, Microsoft::WRL::ComPtr<ID3D12PipelineState> PS, DirectX::XMFLOAT4 color)
+Material::Material(const char* name, std::unordered_map<TextureID, unsigned int> textures, Microsoft::WRL::ComPtr<ID3D12PipelineState> PS, DirectX::XMFLOAT3 color)
 	: name(name), PS(PS), textures(textures), colorTint(color), uvScale(1, 1), uvOffset(0, 0), ambientTint(0.05f, 0.05f, 0.05f)
 {
 	materialIndex = 0;
@@ -14,7 +14,7 @@ void Material::SetDefaultShaderParam(ExternalData data, Transform* transform, Tr
 
 }
 
-DirectX::XMFLOAT4 Material::GetTintColor() { return colorTint; }
+DirectX::XMFLOAT3 Material::GetTintColor() { return colorTint; }
 DirectX::XMFLOAT3 Material::GetAmbientColor() { return ambientTint; }
 const char* Material::GetName() { return name; }
 
@@ -38,7 +38,7 @@ PixelData Material::GetPixelData()
 
 void Material::AddTextureSRV(TextureID textureID, unsigned int id) { textures.insert({ textureID, id }); }
 void Material::SetAmbientTint(DirectX::XMFLOAT3 ambient) { this->ambientTint = ambient; }
-void Material::SetTint(DirectX::XMFLOAT4 tint) { this->colorTint = tint; }
+void Material::SetTint(DirectX::XMFLOAT3 tint) { this->colorTint = tint; }
 void Material::SetIndex() { /*materialIndex = GlobalVar::Material::getIndexThenTick();*/ }
 void Material::SetUVScale(DirectX::XMFLOAT2 scale) { this->uvScale = scale; }
 void Material::SetUVOffset(DirectX::XMFLOAT2 offset) { this->uvOffset = offset; }

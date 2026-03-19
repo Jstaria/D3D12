@@ -63,6 +63,9 @@
     <ClCompile Include="Components\Light.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MainComponents\RayTracing.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PathHelpers.h">
@@ -158,12 +161,18 @@
     <ClInclude Include="Structures\PixelData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="MainComponents\RayTracing.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="PixelShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="VertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Raytracing.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

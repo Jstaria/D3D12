@@ -13,6 +13,13 @@
 //#include "../ImGui/imgui.h"
 #include "../Interfaces/IDrawable.h"
 
+struct MeshRayTracingData
+{
+	D3D12_GPU_DESCRIPTOR_HANDLE IndexBufferSRV{};
+	D3D12_GPU_DESCRIPTOR_HANDLE VertexBufferSRV{};
+	Microsoft::WRL::ComPtr <ID3D12Resource > BLAS;
+};
+
 class Mesh : public IDrawable
 {
 private:
@@ -23,6 +30,7 @@ private:
 	D3D12_INDEX_BUFFER_VIEW ibView{};
 
 	MeshData meshData;
+	MeshRayTracingData rayTracingData;
 
 	// --- General ---
 	bool meshToggle;
@@ -46,12 +54,15 @@ public:
 
 	// --- Mesh Getters ---
 	D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView();
+	Microsoft::WRL::ComPtr<ID3D12Resource> GetVertexBuffer();
 	D3D12_INDEX_BUFFER_VIEW GetIndexBufferView();
+	Microsoft::WRL::ComPtr<ID3D12Resource> GetIndexBuffer();
 	int GetVertexCount();
 	int GetIndexCount();
 	const char* GetName() override;
 	MeshData GetMeshData();
 	Vertex GetCenter();
+	const MeshRayTracingData& GetRayTracingData();
 
 	bool GetToggleMesh();
 	bool GetToggleWireFrame();

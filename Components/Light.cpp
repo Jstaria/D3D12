@@ -42,7 +42,7 @@ Light::Light(const char* name, bool canUpdate, bool isActive, DirectX::XMFLOAT3 
 
 void Light::SetLightColor(DirectX::XMFLOAT3 color)
 {
-	material->SetTint(DirectX::XMFLOAT4(color.x, color.y, color.z, 1));
+	material->SetTint(DirectX::XMFLOAT3(color.x, color.y, color.z));
 	lightStruct.Color = color;
 }
 

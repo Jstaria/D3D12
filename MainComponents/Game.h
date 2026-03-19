@@ -14,6 +14,8 @@
 #include "../Helper/OBJLoader.h"
 #include "../Helper/PathHelpers.h"
 
+#include "RayTracing.h"
+
 class Game
 {
 public:

@@ -1,4 +1,5 @@
 #include "Mesh.h"
+#include "../MainComponents/RayTracing.h"
 
 using namespace DirectX;
 using namespace std;
@@ -68,6 +69,9 @@ void Mesh::InitializeMesh(MeshData meshD)
 
 	meshToggle = true;
 	wireFrameToggle = true;
+
+	// Create the raytracing acceleration structure for this mesh
+	rayTracingData = RayTracing::CreateBottomLevelAccelerationStructureForMesh(this);
 }
 
 void Mesh::CreateMesh(MeshData& meshData)
@@ -226,12 +230,15 @@ void Mesh::CalculateTangents(MeshData& meshData)
 
 
 D3D12_VERTEX_BUFFER_VIEW Mesh::GetVertexBufferView() { return vbView; }
+Microsoft::WRL::ComPtr<ID3D12Resource> Mesh::GetVertexBuffer() { return vertexBuffer; }
 D3D12_INDEX_BUFFER_VIEW Mesh::GetIndexBufferView() { return ibView; }
+Microsoft::WRL::ComPtr<ID3D12Resource> Mesh::GetIndexBuffer() { return indexBuffer; }
 
 int Mesh::GetVertexCount() { return (int)meshData.vertices.size(); }
 int Mesh::GetIndexCount() { return (int)meshData.indices.size(); }
 const char* Mesh::GetName() { return name; }
 MeshData Mesh::GetMeshData() { return meshData; }
+const MeshRayTracingData& Mesh::GetRayTracingData() { return rayTracingData; }
 Vertex Mesh::GetCenter() { return center; }
 bool Mesh::GetToggleMesh() { return meshToggle; }
 bool Mesh::GetToggleWireFrame() { return wireFrameToggle; }

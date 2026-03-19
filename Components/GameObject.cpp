@@ -27,6 +27,7 @@ GameObject::~GameObject()
 std::shared_ptr<Transform> GameObject::GetTransform() { return transform; }
 std::shared_ptr<Transform> GameObject::GetParentTransform() { return transform->GetParentTransform(); }
 std::shared_ptr<IDrawable> GameObject::GetDrawable() { return drawable; }
+std::shared_ptr<Mesh> GameObject::GetMesh() { return static_pointer_cast<Mesh>(drawable); }
 std::shared_ptr<Material> GameObject::GetMaterial() { return material; }
 const char* GameObject::GetName() { return name; }
 DirectX::XMFLOAT4 GameObject::GetTint() { return tint; }

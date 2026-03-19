@@ -22,6 +22,12 @@ Game::Game()
 	// Helper methods for loading shaders, creating some basic
 	// geometry to draw and some simple camera matrices.
 	//  - You'll be expanding and/or replacing these later
+
+	RayTracing::Initialize(
+		Window::Width(),
+		Window::Height(),
+		FixPath(L"Raytracing.cso"));
+
 	CreateRootSigAndPipelineState();
 	CreateGeometry();
 	Initialize();	
@@ -287,9 +293,9 @@ void Game::CreateGeometry()
 	{TextureID::METALNESS, scratchedMetal },
 	};
 
-	materials.push_back(std::make_shared<Material>("cobble", cobbleMap, pipelineState, XMFLOAT4(1, 1, 1, 1)));
-	materials.push_back(std::make_shared<Material>("bronze", bronzeMap, pipelineState, XMFLOAT4(1, 1, 1, 1)));
-	materials.push_back(std::make_shared<Material>("scratched", scratchedMap, pipelineState, XMFLOAT4(1, 1, 1, 1)));
+	materials.push_back(std::make_shared<Material>("cobble", cobbleMap, pipelineState, XMFLOAT3(1, 1, 1)));
+	materials.push_back(std::make_shared<Material>("bronze", bronzeMap, pipelineState, XMFLOAT3(1, 1, 1)));
+	materials.push_back(std::make_shared<Material>("scratched", scratchedMap, pipelineState, XMFLOAT3(1, 1, 1)));
 
 	drawables.push_back(std::make_shared<Mesh>("Torus", FixPath("../../Assets/Meshes/sphere.obj").c_str()));
 	drawables.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/cube.obj").c_str()));
@@ -304,14 +310,23 @@ void Game::Initialize()
 {
 	camera = std::make_shared<FPSCamera>("MainCamera", XMFLOAT3(0, 0, -5.0f), 5.0f, .002f, 80.0f, Window::AspectRatio(), 0.01f, 1000.0f);
 
-	lights.push_back(std::make_shared<Light>("Directional Light", true, true, XMFLOAT3(1, 1, 1), XMFLOAT3(-1, -1, 1), 2));
-	lights.push_back(std::make_shared<Light>("Directional Light", true, true, XMFLOAT3(0, 0, 2), XMFLOAT3(-1, -1, 1), 2, 10));
+	//lights.push_back(std::make_shared<Light>("Directional Light", true, true, XMFLOAT3(1, 1, 1), XMFLOAT3(-1, -1, 1), 2));
+	//lights.push_back(std::make_shared<Light>("Directional Light", true, true, XMFLOAT3(0, 0, 2), XMFLOAT3(-1, -1, 1), 2, 10));
 
 	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Torus", drawables[0], nullptr, materials[0])));
 	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Cube", drawables[1], nullptr, materials[1])));
 	gameObjs[1]->GetTransform()->SetPosition(-3, 0, 0);
 	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Helix", drawables[2], nullptr, materials[2])));
 	gameObjs[2]->GetTransform()->SetPosition(3, 0, 0);
+
+	// Once we have all of the BLASs ready, we can make a TLAS
+	RayTracing::CreateTopLevelAccelerationStructureForScene(gameObjs[0]);
+	
+	// Finalize any initialization and wait for the GPU
+	// before proceeding to the game loop
+	Graphics::CloseAndExecuteCommandList();
+	Graphics::WaitForGPU();
+	Graphics::ResetAllocatorAndCommandList(Graphics::SwapChainIndex());
 }
 
 // --------------------------------------------------------
@@ -341,6 +356,10 @@ void Game::OnResize()
 		scissorRect.top = 0;
 		scissorRect.right = Window::Width();
 		scissorRect.bottom = Window::Height();
+
+		// Resize raytracing output texture
+		RayTracing::ResizeOutputUAV(Window::Width(), Window::Height());
+
 	}
 }
 
@@ -369,44 +388,44 @@ void Game::Draw(float deltaTime, float totalTime)
 
 	// Clearing the render target
 	{
-		// Transition the back buffer from present to render target
-		D3D12_RESOURCE_BARRIER rb = {};
+		//// Transition the back buffer from present to render target
+		//D3D12_RESOURCE_BARRIER rb = {};
 
-		rb.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		rb.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		rb.Transition.pResource = currentBackBuffer.Get();
-		rb.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-		rb.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		rb.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		//rb.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		//rb.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		//rb.Transition.pResource = currentBackBuffer.Get();
+		//rb.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+		//rb.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		//rb.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-		Graphics::CommandList->ResourceBarrier(1, &rb);
+		//Graphics::CommandList->ResourceBarrier(1, &rb);
 
-		// Background color (Cornflower Blue in this case) for clearing
-		float color[] = { 0,0,0,1 }; //{ 0.4f, 0.6f, 0.75f, 1.0f };
+		//// Background color (Cornflower Blue in this case) for clearing
+		//float color[] = { 0,0,0,1 }; //{ 0.4f, 0.6f, 0.75f, 1.0f };
 
-		// Clear the RTV
-		Graphics::CommandList->ClearRenderTargetView(
-			Graphics::RTVHandles[Graphics::SwapChainIndex()],
-			color,
-			0, 0); // No scissor rectangles
+		//// Clear the RTV
+		//Graphics::CommandList->ClearRenderTargetView(
+		//	Graphics::RTVHandles[Graphics::SwapChainIndex()],
+		//	color,
+		//	0, 0); // No scissor rectangles
 
-		// Clear the depth buffer, too
-		Graphics::CommandList->ClearDepthStencilView(
-			Graphics::DSVHandle,
-			D3D12_CLEAR_FLAG_DEPTH,
-			1.0f, // Max depth = 1.0f
-			0, // Not clearing stencil, but need a value
-			0, 0); // No scissor rects
+		//// Clear the depth buffer, too
+		//Graphics::CommandList->ClearDepthStencilView(
+		//	Graphics::DSVHandle,
+		//	D3D12_CLEAR_FLAG_DEPTH,
+		//	1.0f, // Max depth = 1.0f
+		//	0, // Not clearing stencil, but need a value
+		//	0, 0); // No scissor rects
 	}
 
-	// Rendering here!
+	// Rast Rendering here!
 	{
-		// Optimization: Have less pipeline state changes by grouping draws with same state
+		/*// Optimization: Have less pipeline state changes by grouping draws with same state
 		// Set overall pipeline state
 		Graphics::CommandList->SetPipelineState(pipelineState.Get());
 
 		// Set up other commands for rendering
-		Graphics::CommandList->SetDescriptorHeaps(1, Graphics::CBVSRVDescriptorHeap.GetAddressOf());
+		Graphics::CommandList->SetDescriptorHeaps(1, Graphics::cbvSrvDescriptorHeap.GetAddressOf());
 		// Root sig (must happen before root descriptor table)
 		Graphics::CommandList->SetGraphicsRootSignature(rootSignature.Get());
 
@@ -465,22 +484,28 @@ void Game::Draw(float deltaTime, float totalTime)
 			Graphics::CommandList->SetGraphicsRootDescriptorTable(1, handle);
 
 			g->GetDrawable()->Draw();
-		}
+		}*/
+	}
+
+	// RT
+	{
+		RayTracing::CreateTopLevelAccelerationStructureForScene(gameObjs[0]);
+		RayTracing::Raytrace(camera, currentBackBuffer);
 	}
 
 	// Present
 	{
 		// Transition back to present
-		D3D12_RESOURCE_BARRIER rb = {};
-
-		rb.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		rb.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		rb.Transition.pResource = currentBackBuffer.Get();
-		rb.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		rb.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-		rb.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-		Graphics::CommandList->ResourceBarrier(1, &rb);
+		//  D3D12_RESOURCE_BARRIER rb = {};
+		//  
+		//  rb.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		//  rb.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		//  rb.Transition.pResource = currentBackBuffer.Get();
+		//  rb.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		//  rb.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+		//  rb.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		//  
+		//  Graphics::CommandList->ResourceBarrier(1, &rb);
 
 		// Must occur BEFORE present
 		Graphics::CloseAndExecuteCommandList();

@@ -34,6 +34,7 @@ public:
 	std::shared_ptr<Transform> GetTransform() override;
 	std::shared_ptr<Transform> GetParentTransform();
 	std::shared_ptr<IDrawable> GetDrawable() override;
+	std::shared_ptr<Mesh> GetMesh();
 	std::shared_ptr<Material> GetMaterial() override;
 	const char* GetName();
 	DirectX::XMFLOAT4 GetTint();

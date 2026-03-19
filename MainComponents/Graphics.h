@@ -45,7 +45,7 @@ namespace Graphics
 	// result in fewer buffers in use at any time
 	const unsigned int MaxConstantBuffers = 1000;
 
-	inline Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CBVSRVDescriptorHeap;
+	inline Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> cbvSrvDescriptorHeap;
 	inline Microsoft::WRL::ComPtr<ID3D12Resource> CBUploadHeap;
 
 	// Maximum number of texture descriptors (SRVs) we can have.
@@ -102,4 +102,21 @@ namespace Graphics
 		unsigned int dataSizeInBytes);
 
 	unsigned int LoadTexture(const wchar_t* file, bool generateMips = true);
+
+	// ======= Header Declarations =======
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> CreateBuffer(
+		UINT64 size,
+		D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT,
+		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON,
+		D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE,
+		UINT64 alignment = 0,
+		void* data = 0,
+		size_t dataSize = 0);
+
+	void ReserveDescriptorHeapSlot(
+		D3D12_CPU_DESCRIPTOR_HANDLE* reservedCPUHandle,
+		D3D12_GPU_DESCRIPTOR_HANDLE* reservedGPUHandle);
+
+	unsigned int GetDescriptorIndex(D3D12_GPU_DESCRIPTOR_HANDLE handle);
 }

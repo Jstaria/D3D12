@@ -26,7 +26,7 @@ class Material
 {
 private:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> PS;
-	DirectX::XMFLOAT4 colorTint;
+	DirectX::XMFLOAT3 colorTint;
 	DirectX::XMFLOAT3 ambientTint;
 	const char* name;
 
@@ -39,12 +39,12 @@ private:
 	//std::unordered_map<const char*, Microsoft::WRL::ComPtr<ID3D11SamplerState>> samplers;
 
 public:
-	Material(const char* name, std::unordered_map<TextureID, unsigned int> textures, Microsoft::WRL::ComPtr<ID3D12PipelineState> PS, DirectX::XMFLOAT4 color);
+	Material(const char* name, std::unordered_map<TextureID, unsigned int> textures, Microsoft::WRL::ComPtr<ID3D12PipelineState> PS, DirectX::XMFLOAT3 color);
 
 	void SetDefaultShaderParam(ExternalData data, Transform* transform, Transform* camTransform);
 
 	// -=| Getters |=-
-	DirectX::XMFLOAT4 GetTintColor();
+	DirectX::XMFLOAT3 GetTintColor();
 	DirectX::XMFLOAT3 GetAmbientColor();
 	const char* GetName();
 	unsigned int GetTextureID(TextureID ID);
@@ -55,7 +55,7 @@ public:
 	// -=| Setters/Adders |=-
 	void AddTextureSRV(TextureID textureID, unsigned int id);
 	void SetAmbientTint(DirectX::XMFLOAT3 ambientTint);
-	void SetTint(DirectX::XMFLOAT4 tint);
+	void SetTint(DirectX::XMFLOAT3 tint);
 	void SetIndex();
 	void SetUVScale(DirectX::XMFLOAT2 scale);
 	void SetUVOffset(DirectX::XMFLOAT2 offset);
