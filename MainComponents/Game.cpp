@@ -293,9 +293,9 @@ void Game::CreateGeometry()
 	{TextureID::METALNESS, scratchedMetal },
 	};
 
-	materials.push_back(std::make_shared<Material>("cobble", cobbleMap, pipelineState, XMFLOAT3(1, 1, 1)));
-	materials.push_back(std::make_shared<Material>("bronze", bronzeMap, pipelineState, XMFLOAT3(1, 1, 1)));
-	materials.push_back(std::make_shared<Material>("scratched", scratchedMap, pipelineState, XMFLOAT3(1, 1, 1)));
+	materials.push_back(std::make_shared<Material>("cobble", cobbleMap, pipelineState, XMFLOAT3(1, 0, 0)));
+	materials.push_back(std::make_shared<Material>("bronze", bronzeMap, pipelineState, XMFLOAT3(1, 0, 0)));
+	materials.push_back(std::make_shared<Material>("scratched", scratchedMap, pipelineState, XMFLOAT3(1, 0, 0)));
 
 	drawables.push_back(std::make_shared<Mesh>("Torus", FixPath("../../Assets/Meshes/sphere.obj").c_str()));
 	drawables.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/cube.obj").c_str()));
@@ -319,8 +319,9 @@ void Game::Initialize()
 	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Helix", drawables[2], nullptr, materials[2])));
 	gameObjs[2]->GetTransform()->SetPosition(3, 0, 0);
 
+	RayTracing::CreateEntityDataBuffer(gameObjs);
 	// Once we have all of the BLASs ready, we can make a TLAS
-	RayTracing::CreateTopLevelAccelerationStructureForScene(gameObjs[0]);
+	RayTracing::CreateTopLevelAccelerationStructureForScene(gameObjs);
 	
 	// Finalize any initialization and wait for the GPU
 	// before proceeding to the game loop
@@ -489,7 +490,7 @@ void Game::Draw(float deltaTime, float totalTime)
 
 	// RT
 	{
-		RayTracing::CreateTopLevelAccelerationStructureForScene(gameObjs[0]);
+		RayTracing::CreateTopLevelAccelerationStructureForScene(gameObjs);
 		RayTracing::Raytrace(camera, currentBackBuffer);
 	}
 

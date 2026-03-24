@@ -45,3 +45,5 @@ struct RayTracingEntityData
 	unsigned int IndexBufferDescriptorIndex;
 	float pad[2];
 };
+
+
