@@ -59,10 +59,8 @@ Vertex InterpolateVertices(uint triangleIndex, float2 barycentrics)
     EntityData thisEntity = ed[InstanceIndex()];
     
     // Get the geometry buffers
-    StructuredBuffer<uint> IndexBuffer =
-        ResourceDescriptorHeap[thisEntity.IndexBufferDescriptorIndex];
-    StructuredBuffer<Vertex> VertexBuffer =
-        ResourceDescriptorHeap[thisEntity.VertexBufferDescriptorIndex];
+    StructuredBuffer<uint> IndexBuffer = ResourceDescriptorHeap[thisEntity.IndexBufferDescriptorIndex];
+    StructuredBuffer<Vertex> VertexBuffer = ResourceDescriptorHeap[thisEntity.VertexBufferDescriptorIndex];
 	
 	// Grab the 3 indices for this triangle
     uint firstIndex = triangleIndex * 3;
@@ -157,9 +155,8 @@ void RayGen()
 
 	// Set the final color of the buffer
     // Set the final color of the buffer (gamma corrected)
-    RWTexture2D<float4> OutputColor =
-        ResourceDescriptorHeap[OutputUAVDescriptorIndex];
-    OutputColor[rayIndices] = float4(pow(payload.color, 1.0f / 2.2f), 1);
+	RWTexture2D<float4> OutputColor = ResourceDescriptorHeap[OutputUAVDescriptorIndex];
+	OutputColor[rayIndices] = float4(pow(payload.color, 1.0f / 2.2f), 1);
 }
 
 
@@ -191,4 +188,5 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
         ResourceDescriptorHeap[EntityDataDescriptorIndex];
     
     EntityData thisEntity = entityDataBuffer[InstanceIndex()];
+    payload.color = thisEntity.Color.rgb;
 }

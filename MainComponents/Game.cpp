@@ -252,6 +252,48 @@ void Game::CreateRootSigAndPipelineState()
 	}
 }
 
+XMFLOAT3 HSLToRGB(float h, float s, float l)
+{
+	auto HueToRGB = [](float p, float q, float t) -> float
+		{
+			if (t < 0.0f) t += 1.0f;
+			if (t > 1.0f) t -= 1.0f;
+			if (t < 1.0f / 6.0f) return p + (q - p) * 6.0f * t;
+			if (t < 1.0f / 2.0f) return q;
+			if (t < 2.0f / 3.0f) return p + (q - p) * (2.0f / 3.0f - t) * 6.0f;
+			return p;
+		};
+
+	float r, g, b;
+
+	if (s == 0.0f)
+	{
+		r = g = b = l; 
+	}
+	else
+	{
+		float q = (l < 0.5f) ? (l * (1.0f + s)) : (l + s - l * s);
+		float p = 2.0f * l - q;
+
+		r = HueToRGB(p, q, h + 1.0f / 3.0f);
+		g = HueToRGB(p, q, h);
+		b = HueToRGB(p, q, h - 1.0f / 3.0f);
+	}
+
+	return XMFLOAT3(r, g, b);
+}
+
+XMFLOAT3 GetRainbowColor(float time, float speed = 0.2f)
+{
+	float hue = fmodf(time * speed, 1.0f);
+	if (hue < 0.0f) hue += 1.0f;
+
+	float saturation = 1.0f;
+	float lightness = 0.5f;
+
+	return HSLToRGB(hue, saturation, lightness);
+}
+
 void Game::CreateGeometry()
 {
 	std::wstring AssetPath = L"../../Assets/";
@@ -293,9 +335,10 @@ void Game::CreateGeometry()
 	{TextureID::METALNESS, scratchedMetal },
 	};
 
-	materials.push_back(std::make_shared<Material>("cobble", cobbleMap, pipelineState, XMFLOAT3(1, 0, 0)));
-	materials.push_back(std::make_shared<Material>("bronze", bronzeMap, pipelineState, XMFLOAT3(1, 0, 0)));
-	materials.push_back(std::make_shared<Material>("scratched", scratchedMap, pipelineState, XMFLOAT3(1, 0, 0)));
+	materials.push_back(std::make_shared<Material>("cobble", cobbleMap, pipelineState, GetRainbowColor(.2)));
+	materials.push_back(std::make_shared<Material>("bronze", bronzeMap, pipelineState, GetRainbowColor(0)));
+	materials.push_back(std::make_shared<Material>("scratched", scratchedMap, pipelineState, GetRainbowColor(.4)));
+	materials.push_back(std::make_shared<Material>("floor", scratchedMap, pipelineState, XMFLOAT3(.25f,.25f,.25f)));
 
 	drawables.push_back(std::make_shared<Mesh>("Torus", FixPath("../../Assets/Meshes/sphere.obj").c_str()));
 	drawables.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/cube.obj").c_str()));
@@ -318,6 +361,9 @@ void Game::Initialize()
 	gameObjs[1]->GetTransform()->SetPosition(-3, 0, 0);
 	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Helix", drawables[2], nullptr, materials[2])));
 	gameObjs[2]->GetTransform()->SetPosition(3, 0, 0);
+	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Cube2", drawables[1], nullptr, materials[3])));
+	gameObjs[3]->GetTransform()->SetPosition(0, -5, 0);
+	gameObjs[3]->GetTransform()->SetScale(10000000, 1, 10000000);
 
 	RayTracing::CreateEntityDataBuffer(gameObjs);
 	// Once we have all of the BLASs ready, we can make a TLAS
@@ -371,6 +417,11 @@ void Game::OnResize()
 void Game::Update(float deltaTime, float totalTime)
 {
 	camera->Update(deltaTime);
+
+	//for (size_t i = 0; i < gameObjs.size(); i++)
+	//{
+	//	gameObjs[i]->SetTint(GetRainbowColor(totalTime,1));
+	//}
 
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))

@@ -23,7 +23,7 @@ protected:
 	const char* name;
 	std::shared_ptr<GameObject> parentObj;
 	std::vector<GameObject*> childObjs;
-	DirectX::XMFLOAT4 tint;
+	DirectX::XMFLOAT3 tint;
 	DirectX::XMFLOAT3 camPos;
 
 public:
@@ -37,10 +37,10 @@ public:
 	std::shared_ptr<Mesh> GetMesh();
 	std::shared_ptr<Material> GetMaterial() override;
 	const char* GetName();
-	DirectX::XMFLOAT4 GetTint();
+	DirectX::XMFLOAT3 GetTint();
 
 	void SetObjAsChild(GameObject* GameObject);
-	void SetTint(DirectX::XMFLOAT4 tintColor);
+	void SetTint(DirectX::XMFLOAT3 tintColor);
 	void SetMaterial(std::shared_ptr<Material> material) override;
 	void SetDrawable(std::shared_ptr<IDrawable> drawable) override;
 	void SetCamPos(DirectX::XMFLOAT3 camPos);

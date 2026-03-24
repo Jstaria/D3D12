@@ -17,7 +17,7 @@ GameObject::GameObject(const char* name, std::shared_ptr<IDrawable> drawable, st
 		parentObj->SetObjAsChild(this);
 	}
 
-	tint = XMFLOAT4(1, 1, 1, 1);
+	tint = XMFLOAT3(1, 1, 1);
 }
 
 GameObject::~GameObject()
@@ -30,10 +30,10 @@ std::shared_ptr<IDrawable> GameObject::GetDrawable() { return drawable; }
 std::shared_ptr<Mesh> GameObject::GetMesh() { return static_pointer_cast<Mesh>(drawable); }
 std::shared_ptr<Material> GameObject::GetMaterial() { return material; }
 const char* GameObject::GetName() { return name; }
-DirectX::XMFLOAT4 GameObject::GetTint() { return tint; }
+DirectX::XMFLOAT3 GameObject::GetTint() { return material->GetTintColor(); }
 
 void GameObject::SetObjAsChild(GameObject* child) { childObjs.push_back(child); }
-void GameObject::SetTint(XMFLOAT4 tintColor) { tint = tintColor; }
+void GameObject::SetTint(XMFLOAT3 tintColor) { material->SetTint(tintColor); }
 void GameObject::SetMaterial(std::shared_ptr<Material> material) { this->material = material; }
 void GameObject::SetDrawable(std::shared_ptr<IDrawable> drawable) { this->drawable = drawable; }
 void GameObject::SetCamPos(DirectX::XMFLOAT3 camPos) { this->camPos = camPos; }
