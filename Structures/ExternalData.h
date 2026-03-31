@@ -43,7 +43,8 @@ struct RayTracingEntityData
 	DirectX::XMFLOAT4 Color;
 	unsigned int VertexBufferDescriptorIndex;
 	unsigned int IndexBufferDescriptorIndex;
-	float pad[2];
+	float diffusion;
+	float pad[3];
 };
 
 

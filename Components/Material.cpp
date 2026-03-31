@@ -3,8 +3,8 @@
 
 using namespace Microsoft::WRL;
 
-Material::Material(const char* name, std::unordered_map<TextureID, unsigned int> textures, Microsoft::WRL::ComPtr<ID3D12PipelineState> PS, DirectX::XMFLOAT3 color)
-	: name(name), PS(PS), textures(textures), colorTint(color), uvScale(1, 1), uvOffset(0, 0), ambientTint(0.05f, 0.05f, 0.05f)
+Material::Material(const char* name, std::unordered_map<TextureID, unsigned int> textures, Microsoft::WRL::ComPtr<ID3D12PipelineState> PS, DirectX::XMFLOAT3 color, float diffusion)
+	: name(name), PS(PS), textures(textures), colorTint(color), uvScale(1, 1), uvOffset(0, 0), ambientTint(0.05f, 0.05f, 0.05f), diffusion(diffusion)
 {
 	materialIndex = 0;
 }
@@ -20,6 +20,8 @@ const char* Material::GetName() { return name; }
 
 unsigned int Material::GetTextureID(TextureID id) { return textures[id]; }
 unsigned int Material::GetMatIndex() { return materialIndex; }
+
+float Material::GetDiffusion() { return diffusion; }
 
 Microsoft::WRL::ComPtr<ID3D12PipelineState> Material::GetPipelineState() { return PS; }
 

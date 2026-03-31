@@ -1,4 +1,6 @@
-
+#define PI 3.1415f
+#define RPP 25
+#define RECDEP 10
 
 // === Structs ===
 
@@ -11,11 +13,14 @@ struct Vertex
     float3 tangent;
 };
 
+
 // Payload for rays (data that is "sent along" with each ray during raytrace)
 // Note: This should be as small as possible, and must match our C++ size definition
 struct RayPayload
 {
     float3 color;
+    uint RecursionDepth;
+    uint RayPerPixelIndex;
 };
 struct SceneData
 {
@@ -28,7 +33,9 @@ struct EntityData
     float4 Color;
     uint VertexBufferDescriptorIndex;
     uint IndexBufferDescriptorIndex;
-    float pad[2];
+    float diffusion;
+    float pad[3];
+    
 };
 // Note: We'll be using the built-in BuiltInTriangleIntersectionAttributes struct
 // for triangle attributes, so no need to define our own.  It contains a single float2.
@@ -93,6 +100,41 @@ Vertex InterpolateVertices(uint triangleIndex, float2 barycentrics)
     return finalVert;
 }
 
+float rand(float2 uv)
+{
+    return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
+}
+
+// Not really “random”, but quick to implement
+float2 rand2(float2 uv)
+{
+    return float2(
+rand(uv),
+rand(uv.yx));
+}
+
+float3 RandomVector(float u0, float u1)
+{
+    float a = u0 * 2 - 1;
+    float b = sqrt(1 - a * a);
+    float phi = 2.0f * PI * u1;
+    float x = b * cos(phi);
+    float y = b * sin(phi);
+    float z = a;
+    return float3(x, y, z);
+}
+
+float3 RandomCosineWeightedHemisphere(float u0, float u1, float3 unitNormal)
+{
+    float a = u0 * 2 - 1;
+    float b = sqrt(1 - a * a);
+    float phi = 2.0f * PI * u1;
+    float x = unitNormal.x + b * cos(phi);
+    float y = unitNormal.y + b * sin(phi);
+    float z = unitNormal.z + a;
+    return float3(x, y, z);
+}
+
 
 // Calculates an origin and direction from the camera for specific pixel indices
 RayDesc CalcRayFromCamera(float2 rayIndices, float3 camPos, float4x4 invVP)
@@ -132,31 +174,49 @@ void RayGen()
 
 	// Calculate the ray from the camera through a particular
 	// pixel of the output buffer using this shader's indices
-    RayDesc ray = CalcRayFromCamera(
-		rayIndices,
-		cb.CameraPosition,
-		cb.InverseViewProjection);
+
 
 	// Set up the payload for the ray
 	// This initializes the struct to all zeros
-    RayPayload payload = (RayPayload) 0;
+    //RayPayload payload = (RayPayload) 0;
 
     RaytracingAccelerationStructure SceneTLAS = ResourceDescriptorHeap[SceneTLASDescriptorIndex];
 	// Perform the ray trace for this ray
-    TraceRay(
+    
+
+    float3 totalColor = float3(0, 0, 0);
+    int raysPerPixel = RPP;
+    
+    for (int r = 0; r < raysPerPixel; r++)
+    {
+        float2 adjustedIndices = (float2) rayIndices;
+        float ray01 = (float) r / raysPerPixel;
+        adjustedIndices += rand2(rayIndices.xy * ray01);
+        
+        RayDesc ray = CalcRayFromCamera(adjustedIndices, cb.CameraPosition, cb.InverseViewProjection);
+        
+        RayPayload payload;
+        payload.color = float3(1, 1, 1);
+        payload.RecursionDepth = 0;
+        payload.RayPerPixelIndex = r;
+        
+        TraceRay(
 		SceneTLAS,
 		RAY_FLAG_NONE,
-		0xFF,
-		0,
-		0,
-		0,
-		ray,
+		0xFF, 0, 0, 0,
+        ray,
 		payload);
-
+        
+        totalColor += payload.color;
+    }
+    
+    // Average results
+    float3 avg = totalColor / raysPerPixel;
+    
 	// Set the final color of the buffer
     // Set the final color of the buffer (gamma corrected)
-	RWTexture2D<float4> OutputColor = ResourceDescriptorHeap[OutputUAVDescriptorIndex];
-	OutputColor[rayIndices] = float4(pow(payload.color, 1.0f / 2.2f), 1);
+    RWTexture2D<float4> OutputColor = ResourceDescriptorHeap[OutputUAVDescriptorIndex];
+    OutputColor[rayIndices] = float4(pow(avg, 1.0f / 2.2f), 1);
 }
 
 
@@ -164,9 +224,16 @@ void RayGen()
 [shader("miss")]
 void Miss(inout RayPayload payload)
 {
-	// Nothing was hit, so return black for now.
-	// Ideally this is where we would do skybox stuff!
-    payload.color = float3(0.4f, 0.6f, 0.75f);
+	// Hemispheric gradient
+    float3 upColor = float3(0.3f, 0.5f, 0.95f);
+    float3 downColor = float3(1, 1, 1);
+
+	// Interpolate based on the direction of the ray
+    float interpolation = dot(normalize(WorldRayDirection()), float3(0, 1, 0)) * 0.5f + 0.5f;
+    float3 skyColor = lerp(downColor, upColor, interpolation);
+	
+	// Alter the payload color by the sky color
+    payload.color *= skyColor;
 }
 
 
@@ -183,10 +250,41 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
 	//// Note: Here is where we would do actual shading!
  //   payload.color = interpolatedVert.normal;
     
+    if (payload.RecursionDepth == RECDEP)
+    {
+        payload.color = float3(0, 0, 0);
+        return;
+    }
+    
     // Get the data for this entity
     StructuredBuffer<EntityData> entityDataBuffer =
         ResourceDescriptorHeap[EntityDataDescriptorIndex];
     
+    RaytracingAccelerationStructure SceneTLAS = ResourceDescriptorHeap[SceneTLASDescriptorIndex];
     EntityData thisEntity = entityDataBuffer[InstanceIndex()];
-    payload.color = thisEntity.Color.rgb;
+    payload.color *= thisEntity.Color.rgb;
+    
+    Vertex hit = InterpolateVertices(PrimitiveIndex(), hitAttributes.barycentrics);
+    float3 normal_WS = normalize(mul(hit.normal, (float3x3) ObjectToWorld4x3()));
+    
+    float2 pixelUV = (float2) DispatchRaysIndex().xy / DispatchRaysDimensions().xy;
+    float2 rng = rand2(pixelUV * (payload.RecursionDepth + 1) +
+                payload.RayPerPixelIndex +
+                RayTCurrent());
+    
+    float3 randomBounce = RandomCosineWeightedHemisphere(rand(rng), rand(rng.yx), normal_WS);
+    float3 refl = reflect(WorldRayDirection(), normal_WS);
+    
+    RayDesc ray;
+    ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+    ray.Direction = normalize(lerp(refl, randomBounce, thisEntity.diffusion));
+    ray.TMin = 0.0001f;
+    ray.TMax = 1000.0f;
+    
+    payload.RecursionDepth++;
+    TraceRay(
+		SceneTLAS,
+		RAY_FLAG_NONE,
+		0xFF, 0, 0, 0, ray,
+		payload);
 }
