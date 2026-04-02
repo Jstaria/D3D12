@@ -179,7 +179,7 @@ void RayTracing::CreateRaytracingPipelineState(std::wstring raytracingShaderLibr
 	// - Overall pipeline config
 	// Note: No need for local root signatures due to bindless resource indexing
 	std::vector<D3D12_STATE_SUBOBJECT> subobjects;
-	subobjects.reserve(8);
+	subobjects.reserve(16);
 
 	// === Ray generation shader ===
 	D3D12_EXPORT_DESC rayGenExportDesc = {};
@@ -216,15 +216,17 @@ void RayTracing::CreateRaytracingPipelineState(std::wstring raytracingShaderLibr
 	subobjects.push_back(missSubObj);
 
 	// === Closest hit shader ===
-	D3D12_EXPORT_DESC closestHitExportDesc = {};
-	closestHitExportDesc.Name = L"ClosestHit";
-	closestHitExportDesc.Flags = D3D12_EXPORT_FLAG_NONE;
+	D3D12_EXPORT_DESC closestHitExportDesc[2] = {};
+	closestHitExportDesc[0].Name = L"ClosestHit";
+	closestHitExportDesc[0].Flags = D3D12_EXPORT_FLAG_NONE;
+	closestHitExportDesc[1].Name = L"ClosestHitEmissive";
+	closestHitExportDesc[1].Flags = D3D12_EXPORT_FLAG_NONE;
 
 	D3D12_DXIL_LIBRARY_DESC	closestHitLibDesc = {};
 	closestHitLibDesc.DXILLibrary.BytecodeLength = blob->GetBufferSize();
 	closestHitLibDesc.DXILLibrary.pShaderBytecode = blob->GetBufferPointer();
-	closestHitLibDesc.NumExports = 1;
-	closestHitLibDesc.pExports = &closestHitExportDesc;
+	closestHitLibDesc.NumExports = 2;
+	closestHitLibDesc.pExports = closestHitExportDesc;
 
 	D3D12_STATE_SUBOBJECT closestHitSubObj = {};
 	closestHitSubObj.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
@@ -244,6 +246,17 @@ void RayTracing::CreateRaytracingPipelineState(std::wstring raytracingShaderLibr
 
 	subobjects.push_back(hitGroup);
 
+	// === Hit group emissive===
+	D3D12_HIT_GROUP_DESC hitGroupEmissiveDesc = {};
+	hitGroupEmissiveDesc.ClosestHitShaderImport = L"ClosestHitEmissive";
+	hitGroupEmissiveDesc.HitGroupExport = L"HitGroupEmissive";
+
+	D3D12_STATE_SUBOBJECT hitGroupEmissive = {};
+	hitGroupEmissive.Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
+	hitGroupEmissive.pDesc = &hitGroupEmissiveDesc;
+
+	subobjects.push_back(hitGroupEmissive);
+
 	// === Shader config (payload) ===
 	D3D12_RAYTRACING_SHADER_CONFIG shaderConfigDesc = {};
 	shaderConfigDesc.MaxPayloadSizeInBytes = sizeof(DirectX::XMFLOAT3) + sizeof(unsigned int) * 2;	// Assuming a float3 color for now
@@ -257,12 +270,12 @@ void RayTracing::CreateRaytracingPipelineState(std::wstring raytracingShaderLibr
 
 	// === Association - Payload and shaders ===
 	// Names of shaders that use the payload
-	const wchar_t* payloadShaderNames[] = { L"RayGen", L"Miss", L"HitGroup" };
+	const wchar_t* payloadShaderNames[] = { L"RayGen", L"Miss", L"HitGroup", L"HitGroupEmissive"};
 
 	D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION shaderPayloadAssociation = {};
 	shaderPayloadAssociation.NumExports = ARRAYSIZE(payloadShaderNames);
 	shaderPayloadAssociation.pExports = payloadShaderNames;
-	shaderPayloadAssociation.pSubobjectToAssociate = &subobjects[4]; // Payload config above!
+	shaderPayloadAssociation.pSubobjectToAssociate = &subobjects[5]; // Payload config above!
 
 	D3D12_STATE_SUBOBJECT shaderPayloadAssociationObject = {};
 	shaderPayloadAssociationObject.Type = D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION;
@@ -385,6 +398,13 @@ void RayTracing::CreateShaderTables()
 			addr, 
 			RaytracingPipelineProperties->GetShaderIdentifier(L"HitGroup"), 
 			D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
+		addr += hitGroupRecordSize;
+		memcpy(
+			addr,
+			RaytracingPipelineProperties->GetShaderIdentifier(L"HitGroupEmissive"),
+			D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
 		HitGroupTable->Unmap(0, 0);
 	}
 }
@@ -600,7 +620,7 @@ void RayTracing::CreateTopLevelAccelerationStructureForScene(std::vector<std::sh
 
 		D3D12_RAYTRACING_INSTANCE_DESC instDesc = {};
 		instDesc.InstanceID = 0;
-		instDesc.InstanceContributionToHitGroupIndex = 0;
+		instDesc.InstanceContributionToHitGroupIndex = scene[i]->GetMaterial()->GetHitGroupindex();
 		instDesc.InstanceMask = 0xFF;
 
 		memcpy(&instDesc.Transform, &transform, sizeof(float) * 3 * 4);
@@ -834,7 +854,8 @@ void RayTracing::CreateEntityDataBuffer(std::vector<std::shared_ptr<GameObject>>
 		data.Color = DirectX::XMFLOAT4(c.x, c.y, c.z, 1);
 		data.IndexBufferDescriptorIndex = Graphics::GetDescriptorIndex(scene[i]->GetMesh()->GetRayTracingData().IndexBufferSRV);
 		data.VertexBufferDescriptorIndex = Graphics::GetDescriptorIndex(scene[i]->GetMesh()->GetRayTracingData().VertexBufferSRV);
-		data.diffusion = scene[i]->GetMaterial()->GetDiffusion();
+		data.Diffusion = scene[i]->GetMaterial()->GetDiffusion();
+		data.Emissive = scene[i]->GetMaterial()->GetEmissive();
 
 		entityData.push_back(data);
 	}

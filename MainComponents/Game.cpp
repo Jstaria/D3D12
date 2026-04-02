@@ -335,10 +335,10 @@ void Game::CreateGeometry()
 	{TextureID::METALNESS, scratchedMetal },
 	};
 
-	materials.push_back(std::make_shared<Material>("cobble", cobbleMap, pipelineState, GetRainbowColor(.2), .25f));
-	materials.push_back(std::make_shared<Material>("bronze", bronzeMap, pipelineState, GetRainbowColor(0), .1f));
-	materials.push_back(std::make_shared<Material>("scratched", scratchedMap, pipelineState, GetRainbowColor(.4), .75f));
-	materials.push_back(std::make_shared<Material>("floor", scratchedMap, pipelineState, XMFLOAT3(.25f,.25f,.25f), 1.0f));
+	materials.push_back(std::make_shared<Material>("cobble", cobbleMap, pipelineState, GetRainbowColor(.2), .25f, 100, 1));
+	materials.push_back(std::make_shared<Material>("bronze", bronzeMap, pipelineState, GetRainbowColor(0), .1f, 0, 0));
+	materials.push_back(std::make_shared<Material>("scratched", scratchedMap, pipelineState, GetRainbowColor(.4), .75f, 0, 0));
+	materials.push_back(std::make_shared<Material>("floor", scratchedMap, pipelineState, XMFLOAT3(.25f,.25f,.25f), 1.0f, 0, 0));
 
 	drawables.push_back(std::make_shared<Mesh>("Torus", FixPath("../../Assets/Meshes/sphere.obj").c_str()));
 	drawables.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/cube.obj").c_str()));

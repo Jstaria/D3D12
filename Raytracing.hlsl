@@ -33,8 +33,9 @@ struct EntityData
     float4 Color;
     uint VertexBufferDescriptorIndex;
     uint IndexBufferDescriptorIndex;
-    float diffusion;
-    float pad[3];
+    float Diffusion;
+    float Emissive;
+    float pad[2];
     
 };
 // Note: We'll be using the built-in BuiltInTriangleIntersectionAttributes struct
@@ -277,7 +278,7 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
     
     RayDesc ray;
     ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-    ray.Direction = normalize(lerp(refl, randomBounce, thisEntity.diffusion));
+    ray.Direction = normalize(lerp(refl, randomBounce, thisEntity.Diffusion));
     ray.TMin = 0.0001f;
     ray.TMax = 1000.0f;
     
@@ -287,4 +288,23 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
 		RAY_FLAG_NONE,
 		0xFF, 0, 0, 0, ray,
 		payload);
+}
+
+[shader("closesthit")]
+void ClosestHitEmissive(inout RayPayload payload, BuiltInTriangleIntersectionAttributes hitAttributes)
+{
+    if (payload.RecursionDepth == RECDEP)
+    {
+        payload.color = float3(0, 0, 0);
+        return;
+    }
+    
+    // Get the data for this entity
+    StructuredBuffer<EntityData> entityDataBuffer =
+        ResourceDescriptorHeap[EntityDataDescriptorIndex];
+    
+    RaytracingAccelerationStructure SceneTLAS = ResourceDescriptorHeap[SceneTLASDescriptorIndex];
+    EntityData thisEntity = entityDataBuffer[InstanceIndex()];
+    payload.color *= thisEntity.Color.rgb * thisEntity.Emissive;
+   
 }

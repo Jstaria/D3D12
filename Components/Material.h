@@ -30,17 +30,19 @@ private:
 	DirectX::XMFLOAT3 ambientTint;
 	const char* name;
 	float diffusion;
+	float emissive;
 
 	DirectX::XMFLOAT2 uvOffset;
 	DirectX::XMFLOAT2 uvScale;
 
 	unsigned int materialIndex;
+	unsigned int hitGroupIndex;
 
 	std::unordered_map<TextureID, unsigned int> textures;
 	//std::unordered_map<const char*, Microsoft::WRL::ComPtr<ID3D11SamplerState>> samplers;
 
 public:
-	Material(const char* name, std::unordered_map<TextureID, unsigned int> textures, Microsoft::WRL::ComPtr<ID3D12PipelineState> PS, DirectX::XMFLOAT3 color, float diffusion);
+	Material(const char* name, std::unordered_map<TextureID, unsigned int> textures, Microsoft::WRL::ComPtr<ID3D12PipelineState> PS, DirectX::XMFLOAT3 color, float diffusion, float emissive, unsigned int hitGroupIndex);
 
 	void SetDefaultShaderParam(ExternalData data, Transform* transform, Transform* camTransform);
 
@@ -51,6 +53,8 @@ public:
 	unsigned int GetTextureID(TextureID ID);
 	unsigned int GetMatIndex();
 	float GetDiffusion();
+	float GetEmissive();
+	unsigned int GetHitGroupindex();
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> GetPipelineState();
 	PixelData GetPixelData();
 
