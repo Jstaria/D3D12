@@ -751,3 +751,275 @@ unsigned int Graphics::LoadTexture(const wchar_t* file, bool generateMips)
 	// Send back the index of the descriptor
 	return srvIndex;
 }
+
+// ======== Function Bodies =========
+
+		// --------------------------------------------------------
+		// Helper for creating a buffer.  Optionally,
+		// initial data may be provided for the buffer.
+		// A temporary upload buffer will be created to
+		// receive the data, which is then copied to
+		// the final GPU buffer.
+		// 
+		// bufferSize - How big should the buffer be in bytes
+		// heapType   - What kind of D3D12 heap?  Default is D3D12_HEAP_TYPE_DEFAULT
+		// state      - What state should the resulting resource be in?  Default is D3D12_RESOURCE_STATE_COMMON
+		// flags      - Any special flags?  Default is D3D12_RESOURCE_FLAG_NONE
+		// alignment  - What's the buffer alignment?  Default is 0
+		// data       - Pointer to the data to copy to the buffer.  Default is 0 (nullptr)
+		// dataSize   - Size in bytes of data to copy.  If this is larger than bufferSize, no data is copied
+		// --------------------------------------------------------
+Microsoft::WRL::ComPtr<ID3D12Resource> Graphics::CreateBuffer(
+	UINT64 bufferSize,
+	D3D12_HEAP_TYPE heapType,
+	D3D12_RESOURCE_STATES state,
+	D3D12_RESOURCE_FLAGS flags,
+	UINT64 alignment,
+	void* data,
+	size_t dataSize)
+{
+	// The final buffer
+	Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
+
+	// Describe the heap
+	D3D12_HEAP_PROPERTIES heapDesc = {};
+	heapDesc.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	heapDesc.CreationNodeMask = 1;
+	heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	heapDesc.Type = heapType;
+	heapDesc.VisibleNodeMask = 1;
+
+	// Describe the resource
+	D3D12_RESOURCE_DESC desc = {};
+	desc.Alignment = alignment;
+	desc.DepthOrArraySize = 1;
+	desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	desc.Flags = flags;
+	desc.Format = DXGI_FORMAT_UNKNOWN;
+	desc.Height = 1;
+	desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	desc.MipLevels = 1;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Width = bufferSize; // Size of the buffer
+
+	// Create the buffer
+	Device->CreateCommittedResource(&heapDesc, D3D12_HEAP_FLAG_NONE, &desc, state, 0, IID_PPV_ARGS(buffer.GetAddressOf()));
+
+	// Do we need to copy data to the buffer?
+	if (data && dataSize > 0 && dataSize <= bufferSize)
+	{
+		// We need to copy data into the final buffer, so create
+		// an upload buffer to initially get the data
+		D3D12_HEAP_PROPERTIES uploadProps = {};
+		uploadProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		uploadProps.CreationNodeMask = 1;
+		uploadProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+		uploadProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+		uploadProps.VisibleNodeMask = 1;
+
+		// Remove any special flags on the initial description
+		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+		Microsoft::WRL::ComPtr<ID3D12Resource> uploadHeap;
+		Device->CreateCommittedResource(
+			&uploadProps,
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_COMMON,
+			0,
+			IID_PPV_ARGS(uploadHeap.GetAddressOf()));
+
+		// Do a straight map/memcpy/unmap
+		void* gpuAddress = 0;
+		uploadHeap->Map(0, 0, &gpuAddress);
+		memcpy(gpuAddress, data, dataSize);
+		uploadHeap->Unmap(0, 0);
+
+		// Create a local command list + allocator
+		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> localAllocator;
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> localList;
+
+		Device->CreateCommandAllocator(
+			D3D12_COMMAND_LIST_TYPE_DIRECT,
+			IID_PPV_ARGS(localAllocator.GetAddressOf()));
+
+		Device->CreateCommandList(
+			0,
+			D3D12_COMMAND_LIST_TYPE_DIRECT,
+			localAllocator.Get(),
+			0,
+			IID_PPV_ARGS(localList.GetAddressOf()));
+
+		// Copy the whole buffer from uploadheap to vert buffer
+		localList->CopyResource(buffer.Get(), uploadHeap.Get());
+
+		// Transition the buffer to generic read for the rest of the app lifetime (presumably)
+		D3D12_RESOURCE_BARRIER rb = {};
+		rb.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		rb.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		rb.Transition.pResource = buffer.Get();
+		rb.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		rb.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
+		rb.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		localList->ResourceBarrier(1, &rb);
+
+		// Execute the local command list and wait for it to complete
+		// before returning the final buffer
+		localList->Close();
+		ID3D12CommandList* list[] = { localList.Get() };
+		CommandQueue->ExecuteCommandLists(1, list);
+
+		WaitForGPU();
+	}
+
+	// Return the final buffer
+	return buffer;
+}
+
+// --------------------------------------------------------
+// Reserves a slot in the SRV/UAV section of the overall
+// CBV/SRV/UAV descriptor heap.  Handles to CPU and/or GPU
+// are set via parameters.  Pass in 0 to skip a parameter.
+// --------------------------------------------------------
+void Graphics::ReserveDescriptorHeapSlot(D3D12_CPU_DESCRIPTOR_HANDLE* reservedCPUHandle, D3D12_GPU_DESCRIPTOR_HANDLE* reservedGPUHandle)
+{
+	// Grab the actual heap start on both sides and offset to the next open SRV/UAV portion
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = cbvSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = cbvSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+
+	cpuHandle.ptr += (SIZE_T)srvDescriptorOffset * cbvSrvDescriptorHeapIncrementSize;
+	gpuHandle.ptr += (SIZE_T)srvDescriptorOffset * cbvSrvDescriptorHeapIncrementSize;
+
+	// Set the requested handle(s)
+	if (reservedCPUHandle) { *reservedCPUHandle = cpuHandle; }
+	if (reservedGPUHandle) { *reservedGPUHandle = gpuHandle; }
+
+	// Update the overall offset if at least one handle was reserved
+	if (reservedCPUHandle || reservedGPUHandle)
+		srvDescriptorOffset++;
+}
+
+// --------------------------------------------------------
+// Calculates the index of a given descriptor in the descriptor heap
+// --------------------------------------------------------
+unsigned int Graphics::GetDescriptorIndex(D3D12_GPU_DESCRIPTOR_HANDLE handle)
+{
+	return (unsigned int)((handle.ptr - cbvSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr) /
+		Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+}
+
+unsigned int Graphics::CreateCubemap(
+	const wchar_t* right,
+	const wchar_t* left,
+	const wchar_t* up,
+	const wchar_t* down,
+	const wchar_t* front,
+	const wchar_t* back)
+{
+	// Temporary textures
+	Microsoft::WRL::ComPtr <ID3D12Resource > faces[6]{};
+	// Batch the upload of all six textures
+	DirectX::ResourceUploadBatch upload(Device.Get());
+	upload.Begin();
+	// Load all six textures
+	DirectX::CreateWICTextureFromFile(
+		Device.Get(), upload, right, faces[0].GetAddressOf());
+	DirectX::CreateWICTextureFromFile(
+		Device.Get(), upload, left, faces[1].GetAddressOf());
+	DirectX::CreateWICTextureFromFile(
+		Device.Get(), upload, up, faces[2].GetAddressOf());
+	DirectX::CreateWICTextureFromFile(
+		Device.Get(), upload, down, faces[3].GetAddressOf());
+	DirectX::CreateWICTextureFromFile(
+		Device.Get(), upload, front, faces[4].GetAddressOf());
+	DirectX::CreateWICTextureFromFile(
+		Device.Get(), upload, back, faces[5].GetAddressOf());
+	// Perform the upload and wait for it to finish before returning the texture
+	auto finish = upload.End(CommandQueue.Get());
+	finish.wait();
+	// Grab the size of the first face
+	D3D12_RESOURCE_DESC faceDesc = faces[0]->GetDesc();
+	// Create the new, final texture
+	D3D12_HEAP_PROPERTIES props = {};
+	props.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	props.CreationNodeMask = 1;
+	props.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	props.Type = D3D12_HEAP_TYPE_DEFAULT;
+	props.VisibleNodeMask = 1;
+	D3D12_RESOURCE_DESC desc = {};
+	desc.Alignment = 0;
+	desc.DepthOrArraySize = 6; // Cube map
+	desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	desc.Format = faceDesc.Format;
+	desc.Height = faceDesc.Height;
+	desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	desc.MipLevels = 1;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Width = faceDesc.Width;
+	Microsoft::WRL::ComPtr <ID3D12Resource > cubeMap;
+	Device->CreateCommittedResource(
+		&props,
+		D3D12_HEAP_FLAG_NONE,
+		&desc,
+		D3D12_RESOURCE_STATE_COPY_DEST, // Copying into immediately
+		0,
+		IID_PPV_ARGS(cubeMap.GetAddressOf()));
+	// Copy all faces to the proper subresource of the cube map
+	for (int f = 0; f < 6; f++)
+	{
+		// Set up destination
+		D3D12_TEXTURE_COPY_LOCATION destLoc{};
+		destLoc.pResource = cubeMap.Get();
+		destLoc.SubresourceIndex = f;
+		destLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		// Set up source
+		D3D12_TEXTURE_COPY_LOCATION srcLoc{};
+		srcLoc.pResource = faces[f].Get();
+		srcLoc.SubresourceIndex = 0;
+		srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		// Transition source to proper state
+		D3D12_RESOURCE_BARRIER tr{};
+		tr.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		tr.Transition.pResource = faces[f].Get();
+		tr.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		tr.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+		tr.Transition.Subresource = 0;
+		CommandList->ResourceBarrier(1, &tr);
+		CommandList->CopyTextureRegion(&destLoc, 0, 0, 0, &srcLoc, 0);
+	}
+	// Transition final texture to final state
+	D3D12_RESOURCE_BARRIER tr{};
+	tr.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	tr.Transition.pResource = cubeMap.Get();
+	tr.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	tr.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	tr.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	CommandList->ResourceBarrier(1, &tr);
+	CloseAndExecuteCommandList();
+	WaitForGPU();
+	ResetAllocatorAndCommandList(0);
+	// Save the resource
+	textures.push_back(cubeMap);
+	// Save the index of this descriptor and increment the overall offset
+	unsigned int srvIndex = srvDescriptorOffset;
+	srvDescriptorOffset++;
+	// Set up descriptor
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.Format = faceDesc.Format;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.TextureCube.MipLevels = 1;
+	srvDesc.TextureCube.MostDetailedMip = 0;
+	srvDesc.TextureCube.ResourceMinLODClamp = 0;
+	// Create the SRV in the main descriptor heap at the appropriate offset
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle =
+		cbvSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	cpuHandle.ptr += srvIndex * Device->GetDescriptorHandleIncrementSize(
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	Device->CreateShaderResourceView(cubeMap.Get(), &srvDesc, cpuHandle);
+	// Send back the index of the descriptor
+	return srvIndex;
+}
