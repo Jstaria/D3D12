@@ -233,7 +233,7 @@ HRESULT Graphics::Initialize(unsigned int windowWidth, unsigned int windowHeight
 		CBVSRVDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		CBVSRVDesc.NodeMask = 0;
 
-		Device->CreateDescriptorHeap(&CBVSRVDesc, IID_PPV_ARGS(CBVSRVDescriptorHeap.GetAddressOf()));
+		Device->CreateDescriptorHeap(&CBVSRVDesc, IID_PPV_ARGS(cbvSrvDescriptorHeap.GetAddressOf()));
 
 		// Describes the final heap
 		D3D12_HEAP_PROPERTIES props = {};
@@ -687,8 +687,8 @@ D3D12_GPU_DESCRIPTOR_HANDLE Graphics::FillNextConstBufAndGetGPUDescHan(
 	// Create a CBV for this section of the heap
 	{
 		// Calculate the CPU and GPU side handles for this descriptor
-		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = CBVSRVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = CBVSRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = cbvSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = cbvSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 
 		// Offset each by based on how many descriptors we've used
 		// Note: cbvDescriptorOffset is a COUNT of descriptors, not bytes so we must calculate the size
@@ -743,7 +743,7 @@ unsigned int Graphics::LoadTexture(const wchar_t* file, bool generateMips)
 	// CreateShaderResourceView(), you can use null (zero) for the SRV_DESC param
 	// to get a default SRV that can see all potential subresources of the texture.
 
-	D3D12_CPU_DESCRIPTOR_HANDLE handle = CBVSRVDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	D3D12_CPU_DESCRIPTOR_HANDLE handle = cbvSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	handle.ptr += srvIndex * Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	Device->CreateShaderResourceView(texture.Get(), 0, handle);

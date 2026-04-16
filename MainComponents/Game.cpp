@@ -312,6 +312,16 @@ void Game::Initialize()
 	gameObjs[1]->GetTransform()->SetPosition(-3, 0, 0);
 	gameObjs.push_back(std::make_shared<GameObject>(GameObject("Helix", drawables[2], nullptr, materials[2])));
 	gameObjs[2]->GetTransform()->SetPosition(3, 0, 0);
+
+	unsigned int skyTexture = Graphics::CreateCubemap(
+		FixPath(L"../../Assets/Skies/Clouds Blue/right.png").c_str(),
+		FixPath(L"../../Assets/Skies/Clouds Blue/left.png").c_str(),
+		FixPath(L"../../Assets/Skies/Clouds Blue/up.png").c_str(),
+		FixPath(L"../../Assets/Skies/Clouds Blue/down.png").c_str(),
+		FixPath(L"../../Assets/Skies/Clouds Blue/front.png").c_str(),
+		FixPath(L"../../Assets/Skies/Clouds Blue/back.png").c_str());
+
+	skyBox = std::make_shared<Sky>(std::dynamic_pointer_cast<Mesh>(drawables[1]), skyTexture);
 }
 
 // --------------------------------------------------------
@@ -399,38 +409,43 @@ void Game::Draw(float deltaTime, float totalTime)
 			0, 0); // No scissor rects
 	}
 
+	
+
 	// Rendering here!
 	{
-		// Optimization: Have less pipeline state changes by grouping draws with same state
-		// Set overall pipeline state
-		Graphics::CommandList->SetPipelineState(pipelineState.Get());
 
 		// Set up other commands for rendering
-		Graphics::CommandList->SetDescriptorHeaps(1, Graphics::CBVSRVDescriptorHeap.GetAddressOf());
-		// Root sig (must happen before root descriptor table)
-		Graphics::CommandList->SetGraphicsRootSignature(rootSignature.Get());
+		Graphics::CommandList->SetDescriptorHeaps(1, Graphics::cbvSrvDescriptorHeap.GetAddressOf());
 
+		#pragma region MyRegion
 		//// Bind a specific part of it to the "bindless range" of our root signature
-		//// Step 1: Grab the handle of the beginning
-		//D3D12_GPU_DESCRIPTOR_HANDLE handleToSRVs =
-		//	Graphics::CBVSRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+//// Step 1: Grab the handle of the beginning
+//D3D12_GPU_DESCRIPTOR_HANDLE handleToSRVs =
+//	Graphics::CBVSRVDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 
-		//// Step 2: Offset to the first SRV
-		//unsigned int incSize = Graphics::Device->GetDescriptorHandleIncrementSize(
-		//	D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+//// Step 2: Offset to the first SRV
+//unsigned int incSize = Graphics::Device->GetDescriptorHandleIncrementSize(
+//	D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-		//handleToSRVs.ptr += Graphics::MaxConstantBuffers * incSize;
+//handleToSRVs.ptr += Graphics::MaxConstantBuffers * incSize;
 
-		//// Actually bind
-		//Graphics::CommandList->SetGraphicsRootDescriptorTable(2, handleToSRVs);
-
-		Graphics::CommandList->OMSetRenderTargets(
-			1, &Graphics::RTVHandles[Graphics::SwapChainIndex()], true, &Graphics::DSVHandle);
+//// Actually bind
+//Graphics::CommandList->SetGraphicsRootDescriptorTable(2, handleToSRVs);
+#pragma endregion
 
 		Graphics::CommandList->RSSetViewports(1, &viewport);
 		Graphics::CommandList->RSSetScissorRects(1, &scissorRect);
-
+		Graphics::CommandList->OMSetRenderTargets(
+			1, &Graphics::RTVHandles[Graphics::SwapChainIndex()], true, &Graphics::DSVHandle);
 		Graphics::CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		skyBox->Draw(camera);
+
+		// Optimization: Have less pipeline state changes by grouping draws with same state
+		// Set overall pipeline state
+		Graphics::CommandList->SetPipelineState(pipelineState.Get());
+		// Root sig (must happen before root descriptor table)
+		Graphics::CommandList->SetGraphicsRootSignature(rootSignature.Get());
 
 		XMFLOAT3 fwd = camera->GetTransform()->GetForward();
 		//printf("Camera Fwd: %f %f %f\n", fwd.x, fwd.y, fwd.z);

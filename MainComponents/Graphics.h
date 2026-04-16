@@ -45,7 +45,7 @@ namespace Graphics
 	// result in fewer buffers in use at any time
 	const unsigned int MaxConstantBuffers = 1000;
 
-	inline Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CBVSRVDescriptorHeap;
+	inline Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> cbvSrvDescriptorHeap;
 	inline Microsoft::WRL::ComPtr<ID3D12Resource> CBUploadHeap;
 
 	// Maximum number of texture descriptors (SRVs) we can have.
